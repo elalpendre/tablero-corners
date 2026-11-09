@@ -348,7 +348,18 @@
   //    repartir en proporcion a 1/cuota.
   function franjas(m) {
     var R = (m.exactRec || []).filter(Boolean);
-    if (!R.length) return '';
+    // Silencio no: si no hay franja, que se vea POR QUE no la hay.
+    if (!R.length) {
+      return '<h2>La franja de córners</h2><div class="vacia">'
+        + (m.hasStats
+            ? '<b>Este partido tiene estadísticas pero el modelo no encuentra franja.</b><br>'
+              + 'Pasa cuando va tan avanzado que ya casi no caben más córners.'
+            : '<b>Sin franja: este partido no trae estadísticas de córners.</b><br>'
+              + 'La API da el marcador y las cuotas, pero no cuántos córners llevan. '
+              + 'Sin ese número el modelo no puede calcular a cuántos acabará, y sin eso '
+              + 'no hay franja que jugar. Por eso aquí solo ves mercados de goles.')
+        + '</div>';
+    }
     var h = '<h2>La franja, según el cálculo</h2><table><tr>'
       + '<th>Cuántos</th><th>Números</th><th class="r">Probabilidad</th>'
       + '<th class="r">Cuota mínima</th><th class="r">Con valor</th></tr>';
