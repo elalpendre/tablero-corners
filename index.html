@@ -179,6 +179,29 @@
   .latido button[aria-pressed=true]{border-color:var(--cesped);color:var(--cesped);
                                     background:var(--cespedf)}
 
+  /* ---- corners ---- */
+  .velasel{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+  .velasel button{padding:7px 12px;border-radius:9px;border:1px solid var(--raya);
+                  background:var(--tabla);cursor:pointer;font-size:.83rem;text-align:left}
+  .velasel button[aria-pressed=true]{border-color:var(--cesped);color:var(--cesped);
+                                     font-weight:600;background:var(--cespedf)}
+  .velasel .dd{font-family:var(--dato);font-size:.74rem;color:var(--tenue);display:block}
+  .velasel button[aria-pressed=true] .dd{color:var(--cesped)}
+  .figs{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+  .fig{display:inline-block;padding:4px 9px;border-radius:999px;
+       font-size:.78rem;border:1px solid var(--raya);background:var(--fondo)}
+  .fig.mas{border-color:var(--sube);color:var(--sube)}
+  .fig.menos{border-color:var(--baja);color:var(--baja)}
+  .hist{display:flex;align-items:flex-end;gap:3px;height:120px;margin-top:10px}
+  .hist i{flex:1;background:var(--frio);border-radius:3px 3px 0 0;min-height:2px;
+          position:relative}
+  .histx{display:flex;gap:3px;margin-top:5px;font-family:var(--dato);
+         font-size:.68rem;color:var(--tenue);text-align:center}
+  .histx span{flex:1}
+  .dif{font-family:var(--display);font-size:1.05rem;white-space:nowrap;
+       font-variant-numeric:tabular-nums;text-align:right}
+  .dif.mas{color:var(--sube)} .dif.menos{color:var(--baja)}
+
   /* ---- la lista ---- */
   .filtros{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 10px}
   .filtros button{padding:6px 13px;border-radius:999px;cursor:pointer;
@@ -251,6 +274,7 @@
   var PROX = 0;                       // cuando toca la siguiente lectura
   var AC = null;                      // el aparato de sonido del navegador
   var FIRMA = '';                     // la huella de los datos ya pintados
+  var FOCOV = null;                   // el partido elegido en Córners
   var TF = 5;                         // minutos por vela
   var FOCO = null;                    // partido elegido en Velas
   var BANCO = 1000;
@@ -613,6 +637,108 @@
     };
   }
 
+  // ---------- corners: lo que el mercado espera contra lo que esperas tu ----------
+  function velasDe() { return (D && D.velas) || []; }
+  function numsCor() { return (D && D.corners) || {}; }
+
+  // Que significa cada figura cuando el precio son corners. Arriba es
+  // "el mercado se gira hacia MAS corners"; abajo, hacia menos.
+  var QUEES = {
+    doji:               ['', 'el mercado duda: abre y cierra casi igual'],
+    peonza:             ['', 'duda con movimiento arriba y abajo'],
+    marubozu:           ['', 'se movio en una sola direccion, sin horquilla'],
+    martillo:           ['mas', 'bajo y rebotó: el mercado se gira hacia mas cornes'],
+    ahorcado:           ['menos', 'subió y se frenó arriba'],
+    martillo_invertido: ['mas', 'probó arriba y volvió, pero el suelo aguanta'],
+    estrella_fugaz:     ['menos', 'probó arriba y no aguantó: se gira hacia menos'],
+    envolvente_alcista: ['mas', 'se come la foto anterior hacia arriba'],
+    envolvente_bajista: ['menos', 'se come la foto anterior hacia abajo'],
+    harami_alcista:     ['mas', 'la caída se frena dentro de la anterior'],
+    harami_bajista:     ['menos', 'la subida se frena dentro de la anterior'],
+    penetrante:         ['mas', 'recupera más de la mitad de la bajada'],
+    nube_negra:         ['menos', 'devuelve más de la mitad de la subida'],
+    pinzas_techo:       ['menos', 'dos fotos tocando el mismo techo'],
+    pinzas_suelo:       ['mas', 'dos fotos tocando el mismo suelo'],
+    barra_dentro:       ['', 'todo dentro de la foto anterior: parado'],
+    barra_fuera:        ['', 'se sale por arriba y por abajo: nervioso'],
+    estrella_manana:    ['mas', 'cae, duda y se da la vuelta hacia arriba'],
+    estrella_tarde:     ['menos', 'sube, duda y se da la vuelta hacia abajo'],
+    tres_soldados:      ['mas', 'tres fotos seguidas pidiendo mas cornes'],
+    tres_cuervos:       ['menos', 'tres fotos seguidas pidiendo menos'],
+  };
+
+  function bonito(k) { return k.replace(/_/g, ' '); }
+
+  // Velas japonesas de verdad: cuerpo entre apertura y cierre, mecha
+  // hasta el alto y el bajo. Verde, el mercado espera MAS corners.
+  function dibujaVelas(V) {
+    if (!V.length) return '';
+    var ancho = 760, alto = 230, izq = 42, der = 12, arr = 10, aba = 26;
+    var lo = Math.min.apply(null, V.map(function (v) { return v.b; }));
+    var hi = Math.max.apply(null, V.map(function (v) { return v.h; }));
+    V.forEach(function (v) { if (v.modelo != null) { lo = Math.min(lo, v.modelo); hi = Math.max(hi, v.modelo); } });
+    if (hi - lo < 0.5) { var m = (hi + lo) / 2; lo = m - 0.25; hi = m + 0.25; }
+    var pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
+    var W = ancho - izq - der, H = alto - arr - aba;
+    var y = function (v) { return arr + (hi - v) / (hi - lo) * H; };
+    var paso = W / V.length;
+    var cw = Math.max(7, Math.min(28, paso * 0.5));
+
+    var s = '<svg viewBox="0 0 ' + ancho + ' ' + alto + '" role="img" '
+      + 'aria-label="Córners que el mercado espera, foto a foto">';
+    [hi, (hi + lo) / 2, lo].forEach(function (v) {
+      s += '<line x1="' + izq + '" y1="' + y(v).toFixed(1) + '" x2="' + (ancho - der)
+        + '" y2="' + y(v).toFixed(1) + '" stroke="var(--raya)" stroke-width="1"/>'
+        + '<text x="' + (izq - 6) + '" y="' + (y(v) + 4).toFixed(1) + '" text-anchor="end" '
+        + 'font-size="11" fill="var(--tenue)" font-family="var(--dato)">' + v.toFixed(1) + '</text>';
+    });
+
+    // la linea de tu modelo, por debajo de las velas
+    var pts = V.map(function (v, i) {
+      return v.modelo == null ? null : (izq + paso * (i + 0.5)).toFixed(1) + ',' + y(v.modelo).toFixed(1);
+    }).filter(Boolean);
+    if (pts.length >= 2) {
+      s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--frio)" '
+        + 'stroke-width="2" stroke-dasharray="5 4"/>';
+    }
+    pts.forEach(function (p) {
+      var xy = p.split(',');
+      s += '<circle cx="' + xy[0] + '" cy="' + xy[1] + '" r="3" fill="var(--frio)"/>';
+    });
+
+    V.forEach(function (v, i) {
+      var cx = izq + paso * (i + 0.5);
+      var col = v.c > v.a ? 'var(--sube)' : v.c < v.a ? 'var(--baja)' : 'var(--tenue)';
+      s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(v.h).toFixed(1) + '" x2="' + cx.toFixed(1)
+        + '" y2="' + y(v.b).toFixed(1) + '" stroke="' + col + '" stroke-width="2"/>';
+      var y1 = y(Math.max(v.a, v.c)), y2 = y(Math.min(v.a, v.c));
+      s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + y1.toFixed(1) + '" width="'
+        + cw.toFixed(1) + '" height="' + Math.max(2, y2 - y1).toFixed(1) + '" rx="2" fill="' + col + '">'
+        + '<title>minuto ' + v.minuto + '\nabre ' + v.a + '  cierra ' + v.c
+        + '\ntu modelo ' + (v.modelo == null ? '-' : v.modelo)
+        + '\ncórners caídos en el tramo: ' + v.v + '</title></rect>';
+      s += '<text x="' + cx.toFixed(1) + '" y="' + (alto - 8) + '" text-anchor="middle" '
+        + 'font-size="11" fill="var(--tenue)" font-family="var(--dato)">' + v.minuto + "'</text>";
+    });
+    return s + '</svg>';
+  }
+
+  function tablaNum(titulo, filas, cols, vacio) {
+    if (!filas || !filas.length) {
+      return '<h2>' + titulo + '</h2><div class="vacia">' + vacio + '</div>';
+    }
+    var h = '<h2>' + titulo + '</h2><table><tr>'
+      + cols.map(function (c) { return '<th' + (c[2] ? ' class="r"' : '') + '>' + c[1] + '</th>'; }).join('')
+      + '</tr>';
+    filas.forEach(function (f) {
+      h += '<tr>' + cols.map(function (c) {
+        var v = f[c[0]];
+        return '<td class="' + (c[2] ? 'r' : 'd') + '">' + esc(v == null ? '-' : v) + '</td>';
+      }).join('') + '</tr>';
+    });
+    return h + '</table>';
+  }
+
   // ---------- las vistas ----------
   var VISTAS = {
     lista: { t: 'La lista', n: function () { return oportunidades().length; }, pinta: function () {
@@ -679,6 +805,129 @@
         + 'de bet365: el partido lo buscas tu ahi. Enlace que caiga en un partido concreto '
         + 'no lo publica ninguna casa, y no voy a fingir que si. El <b>*</b> en el importe '
         + 'quiere decir que Kelly pedia mas y lo ha cortado el tope del 5 %.</p>';
+      return h;
+    }},
+
+    corners: { t: 'Córners', n: function () { return velasDe().length; }, pinta: function () {
+      var V = velasDe(), N = numsCor();
+      var h = '';
+
+      // ---- el desacuerdo: lo unico que decide algo ----
+      if (V.length) {
+        h += '<h2>El desacuerdo: mercado contra tu modelo</h2>'
+          + '<table><tr><th>Partido</th><th class="r">Min</th><th class="r">Tu modelo</th>'
+          + '<th class="r">El mercado</th><th class="dif">Diferencia</th><th>Lo que dibuja</th></tr>';
+        V.forEach(function (p) {
+          var u = p.velas[p.velas.length - 1], q = p.partido || {};
+          var d = p.desacuerdo;
+          h += '<tr><td><b>' + esc(q.home || '?') + ' – ' + esc(q.away || '?') + '</b>'
+            + '<div class="lug">' + esc(q.league_name || '') + '</div></td>'
+            + '<td class="r">' + u.minuto + "'</td>"
+            + '<td class="r">' + (u.modelo == null ? '-' : u.modelo.toFixed(2)) + '</td>'
+            + '<td class="r">' + u.c.toFixed(2) + '</td>'
+            + '<td class="dif ' + (d > 0 ? 'mas' : d < 0 ? 'menos' : '') + '">'
+            + (d == null ? '-' : (d > 0 ? '+' : '') + d.toFixed(2)) + '</td>'
+            + '<td class="li">' + (p.figuras.length ? esc(p.figuras.map(bonito).join(', ')) : '–') + '</td>'
+            + '</tr>';
+        });
+        h += '</table>'
+          + '<p class="li" style="margin-top:8px">La diferencia es <b>los córners que el '
+          + 'mercado espera menos los que esperas tú</b>. Positiva, la casa pide más córners '
+          + 'que tu modelo: si confías en el modelo, ahí se juega <b>menos de</b>. Negativa, al revés. '
+          + 'El precio no es la línea (salta de 8.5 a 9.5 y no sirve), sino la media que se '
+          + 'despeja de la línea y sus dos cuotas quitándoles el margen.</p>';
+
+        // ---- la vela del partido elegido ----
+        if (!FOCOV || !V.find(function (p) { return p.fixture_id === FOCOV; })) FOCOV = V[0].fixture_id;
+        var p = V.find(function (x) { return x.fixture_id === FOCOV; });
+        h += '<h2>La vela, foto a foto</h2><div class="velasel">' + V.map(function (x) {
+          var q = x.partido || {};
+          return '<button data-focov="' + x.fixture_id + '" aria-pressed="' + (x.fixture_id === FOCOV) + '">'
+            + esc((q.home || '?') + ' – ' + (q.away || '?'))
+            + '<span class="dd">' + x.velas.length + ' foto(s)'
+            + (x.desacuerdo == null ? '' : ' · ' + (x.desacuerdo > 0 ? '+' : '') + x.desacuerdo) + '</span></button>';
+        }).join('') + '</div>';
+
+        h += '<div class="grafico">' + dibujaVelas(p.velas)
+          + '<div class="leyenda">'
+          + '<span><i style="background:var(--sube)"></i>el mercado sube: espera más córners</span>'
+          + '<span><i style="background:var(--baja)"></i>baja: espera menos</span>'
+          + '<span><i style="background:var(--frio)"></i>la línea de puntos es tu modelo</span></div>';
+
+        if (p.figuras.length) {
+          h += '<div class="figs">' + p.figuras.map(function (k) {
+            var q = QUEES[k] || ['', ''];
+            return '<span class="fig ' + q[0] + '" title="' + esc(q[1]) + '">' + esc(bonito(k)) + '</span>';
+          }).join('') + '</div>';
+          h += '<p class="li" style="margin-top:8px">';
+          p.figuras.forEach(function (k) {
+            var q = QUEES[k]; if (q) h += '<b>' + esc(bonito(k)) + '</b>: ' + esc(q[1]) + '. ';
+          });
+          h += '</p>';
+          h += '<p class="li">Puntuación de giro: <b>' + p.mas + '</b> hacia más córners, <b>'
+            + p.menos + '</b> hacia menos. Son las mismas cuentas del código viejo, '
+            + 'comprobadas contra él: mil series y ni una discrepancia.</p>';
+        } else {
+          h += '<p class="li" style="margin-top:8px">Ninguna figura todavía. Las de dos velas '
+            + 'necesitan dos fotos y las de tres, tres.</p>';
+        }
+        if (p.sinHorquilla) {
+          h += '<p class="li"><b>Ojo:</b> en estas fotos la casa publicó una sola línea, así '
+            + 'que la vela no tiene horquilla propia: el alto y el bajo salen de la apertura y '
+            + 'el cierre. Las figuras de mecha (martillo, peonza, estrella) no pueden decir '
+            + 'nada aquí, y <b>marubozu</b> saltaría siempre, así que no se enseña.</p>';
+        }
+        h += '</div>';
+      } else {
+        h += '<div class="vacia"><b>Todavía no hay velas de córners.</b><br>'
+          + 'Salen de <code>casa_log</code>, la libreta donde el worker apunta la línea que '
+          + 'publica la casa en los minutos 15, 30, 45, 60 y 75. Hace falta pillar un partido '
+          + 'con estadísticas de córners y cuota publicada a la vez.</div>';
+      }
+
+      // ---- cuantos corners caen ----
+      var g = N.global || {};
+      h += '<h2>Cuántos córners caen por partido</h2>';
+      if (g.n) {
+        h += '<div class="caja"><div class="rl"><span>partidos cerrados <b>' + g.n + '</b></span>'
+          + '<span>media <b>' + g.media + '</b></span>'
+          + '<span>el menor <b>' + g.minimo + '</b></span>'
+          + '<span>el mayor <b>' + g.maximo + '</b></span></div>';
+        var R = N.reparto || [], mx = Math.max.apply(null, R.map(function (r) { return r.n; })) || 1;
+        if (R.length) {
+          h += '<div class="hist">' + R.map(function (r) {
+            return '<i style="height:' + (r.n / mx * 100).toFixed(1) + '%" title="'
+              + r.corners + ' córners en ' + r.n + ' partido(s)"></i>';
+          }).join('') + '</div><div class="histx">'
+            + R.map(function (r) { return '<span>' + r.corners + '</span>'; }).join('') + '</div>';
+        }
+        h += '</div>';
+      }
+      if ((g.n || 0) < 30) {
+        h += '<div class="vacia"><b>Con ' + (g.n || 0) + ' partido(s) cerrados esto no es una media, '
+          + 'es una anécdota.</b><br>Hay <b>' + ((D.tablas || {}).matches || '?') + '</b> partidos '
+          + 'guardados, pero cerrar uno (ir a buscar los córners finales) cuesta una llamada a la '
+          + 'API, y con 100 al día se van casi todas en mirar los que están en juego. '
+          + 'Por eso la cola no baja.</div>';
+      }
+
+      h += tablaNum('Por país', N.paises,
+        [['pais', 'País'], ['n', 'Partidos', 1], ['media', 'Córners de media', 1]],
+        'Ningún país llega a dos partidos cerrados.');
+      h += tablaNum('Por división', N.ligas,
+        [['pais', 'País'], ['liga', 'División'], ['n', 'Partidos', 1],
+         ['media', 'Media', 1], ['minimo', 'Menor', 1], ['maximo', 'Mayor', 1]],
+        'Ninguna división llega a dos partidos cerrados.');
+      h += tablaNum('Por formación', N.formaciones,
+        [['formacion', 'Formación'], ['n', 'Equipos', 1], ['a_favor', 'Córners a favor', 1],
+         ['en_contra', 'En contra', 1], ['tiros', 'Tiros', 1]],
+        'Hacen falta alineaciones guardadas, y eso solo entra al cerrar un partido.');
+      h += tablaNum('Con cuántos se va en cada corte', N.ritmo,
+        [['minuto', 'Minuto'], ['n', 'Partidos', 1], ['llevaba', 'Llevaba', 1],
+         ['esperaba', 'Tu modelo esperaba', 1], ['acabo', 'Acabó con', 1]],
+        'Esto cruza las fotos del partido con el resultado final. Necesita partidos '
+        + 'cerrados, y ahora mismo casi no hay.');
+
       return h;
     }},
 
@@ -848,6 +1097,9 @@
       var v = Number(inp.value);
       if (v > 0) { BANCO = v; try { localStorage.setItem('tl.banco', String(v)); } catch (e) {} render(); }
     };
+    document.querySelectorAll('[data-focov]').forEach(function (b) {
+      b.onclick = function () { FOCOV = Number(b.dataset.focov); render(); };
+    });
     document.querySelectorAll('[data-filtro]').forEach(function (b) {
       b.onclick = function () { FILTRO = b.dataset.filtro; render(); };
     });

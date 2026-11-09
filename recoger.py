@@ -75,6 +75,11 @@ def main():
     pas = pide('/pasadas') or []
     cup = pide('/cupo') or {}
     tab = pide('/tablas') or {}
+    # Las velas salen de casa_log, que es la libreta de la casa: la linea
+    # que publico en cada foto. No es lo que apunta el navegador mientras
+    # esta abierto; es el mercado, guardado en el servidor.
+    vel = pide('/velas') or []
+    cor = pide('/corners') or {}
 
     datos = {
         'momento': datetime.datetime.now(datetime.timezone.utc)
@@ -86,6 +91,8 @@ def main():
                     for p in (pas if isinstance(pas, list) else [])[:12]],
         'cupo': cup,
         'tablas': tab,
+        'velas': vel if isinstance(vel, list) else [],
+        'corners': cor if isinstance(cor, dict) else {},
     }
     an = sum(1 for m in ms if m.get('analyzed'))
     print('   %d partidos, %d analizados, %d con cuota'
