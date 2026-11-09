@@ -334,11 +334,64 @@
       + (ev == null ? '' : (ev >= 0 ? '+' : '') + (ev * 100).toFixed(1) + '%') + '</div></div>';
   }
 
+  // ---------- LA FRANJA DE CORNERS ----------
+  // Dos tablas distintas y las dos hacen falta.
+  //
+  // 1) Lo que dice el calculo, haya cuotas o no: para 3, 4, 5 y 6 numeros
+  //    seguidos, cual es la mejor franja y que probabilidad tiene. De ahi
+  //    sale la cuota minima que hace falta para no perder dinero a la
+  //    larga: si cubres n numeros con probabilidad P, cada uno tiene que
+  //    pagar al menos n/P. Por debajo de eso, aunque aciertes, pierdes.
+  //
+  // 2) Cuando la casa SI publica los numeros exactos, el reparto: cuanto
+  //    poner en cada uno para cobrar lo mismo salga el que salga. Eso es
+  //    repartir en proporcion a 1/cuota.
+  function franjas(m) {
+    var R = (m.exactRec || []).filter(Boolean);
+    if (!R.length) return '';
+    var h = '<h2>La franja, según el cálculo</h2><table><tr>'
+      + '<th>Cuántos</th><th>Números</th><th class="r">Probabilidad</th>'
+      + '<th class="r">Cuota mínima</th><th class="r">Con valor</th></tr>';
+    R.forEach(function (w) {
+      h += '<tr><td class="d">' + w.nums.length + ' números</td>'
+        + '<td class="d"><b>' + w.nums.join(' · ') + '</b></td>'
+        + '<td class="r">' + pct(w.P) + '</td>'
+        + '<td class="r">' + w.minOdd.toFixed(2) + '</td>'
+        + '<td class="r" style="color:var(--cesped)"><b>' + w.valueOdd.toFixed(2) + '</b></td></tr>';
+    });
+    return h + '</table><p class="li" style="margin-top:8px">La <b>cuota mínima</b> es lo '
+      + 'que tiene que pagar cada número para empatar a la larga. La columna '
+      + '<b>con valor</b> ya lleva el 7 % de ventaja que pedimos para entrar. Si bet365 '
+      + 'paga menos que eso, no se entra aunque apetezca.</p>';
+  }
+
   function sectores(m) {
-    if (!m.exactPlan || !m.exactPlan.nums || !m.exactPlan.nums.length) return '';
-    return '<div class="li" style="margin-top:11px">Por sectores: los números <b>'
-      + m.exactPlan.nums.join(', ') + '</b> cubren un ' + pct(m.exactPlan.P)
-      + ' y la casa paga como si fueran un ' + pct(m.exactPlan.S) + '.</div>';
+    var e = m.exactPlan;
+    if (!e || !e.nums || !e.nums.length) return franjas(m);
+    var T = BANCO * 0.05;                        // lo que se juega en la franja: el tope
+    var S = e.S || e.odds.reduce(function (a, o) { return a + 1 / o; }, 0);
+    var cobro = T / S;                           // se cobra igual salga el que salga
+    var h = franjas(m) + '<h2>La franja, con las cuotas de ahora</h2><table><tr>'
+      + '<th>Córners</th><th class="r">Paga</th><th class="r">Modelo</th>'
+      + '<th class="r">Pones</th><th class="r">Cobras</th></tr>';
+    e.nums.forEach(function (n, i) {
+      var o = e.odds[i], parte = T * (1 / o) / S;
+      h += '<tr><td class="d"><b>' + n + '</b></td>'
+        + '<td class="r">' + o.toFixed(2) + '</td>'
+        + '<td class="r">' + pct((e.ps || [])[i]) + '</td>'
+        + '<td class="r">' + eur(parte) + '</td>'
+        + '<td class="r" style="color:var(--cesped)">' + eur(cobro) + '</td></tr>';
+    });
+    h += '<tr><td class="d"><b>Total</b></td><td class="r">–</td>'
+      + '<td class="r"><b>' + pct(e.P) + '</b></td>'
+      + '<td class="r"><b>' + eur(T) + '</b></td>'
+      + '<td class="r" style="color:var(--cesped)"><b>' + eur(cobro) + '</b></td></tr></table>';
+    h += '<p class="li" style="margin-top:8px">Se reparte en proporción a lo que paga cada '
+      + 'número, así que <b>cobras lo mismo salga el que salga</b>: ' + eur(cobro)
+      + ' sobre ' + eur(T) + ' puestos. El modelo da a la franja un ' + pct(e.P)
+      + ' y el mercado la paga como si fuera un ' + pct(S) + ': ahí está la ventaja de '
+      + '<b>' + (e.ev >= 0 ? '+' : '') + (e.ev * 100).toFixed(1) + ' %</b>.</p>';
+    return h;
   }
 
   function bancoHTML() {
