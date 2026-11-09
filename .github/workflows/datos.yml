@@ -1,0 +1,62 @@
+# Los datos, solos.
+#
+# Una maquina de GitHub llama al worker cada diez minutos y deja aqui el
+# datos.json. No depende de que el ordenador de casa este encendido, y no
+# le afecta el bloqueo de la operadora espanola: la maquina esta fuera.
+#
+# El worker se defiende solo: /refrescar solo analiza de verdad si han
+# pasado cuatro minutos desde la ultima y no se ha llegado al tope del
+# dia. Las demas veces contesta «no tocaba» sin gastar una sola llamada
+# a la API. Por eso se puede llamar cada diez minutos sin miedo.
+#
+# Hace falta un secreto en el repositorio llamado TL_KEY. Se pone una
+# vez, desde el ordenador de casa:
+#
+#     gh secret set TL_KEY --repo elalpendre/tablero-corners < clave.local
+#
+# La clave no se escribe en ningun fichero de este repositorio.
+
+name: datos
+
+on:
+  schedule:
+    # Cada 10 minutos, de 11:00 a 22:59 UTC: la franja en la que hay
+    # futbol en Europa. De madrugada no hay nada que mirar.
+    - cron: '*/10 11-22 * * *'
+  workflow_dispatch:        # y a mano, con un boton, cuando quieras
+
+# Solo escribir en este repositorio. Nada mas.
+permissions:
+  contents: write
+
+# Si una tanda se solapa con la anterior, que gane la nueva.
+concurrency:
+  group: datos
+  cancel-in-progress: true
+
+jobs:
+  recoger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Recoger del worker
+        env:
+          TL_BASE: https://tiros-libre.alpendre.workers.dev
+          TL_KEY: ${{ secrets.TL_KEY }}
+        run: python3 recoger.py
+
+      - name: Publicar si ha cambiado
+        run: |
+          set -e
+          git config user.name  "tablero (automatico)"
+          git config user.email "noreply@github.com"
+          if git diff --quiet -- datos.json; then
+            echo "sin cambios, no commiteo"
+            exit 0
+          fi
+          n=$(python3 -c "import json;d=json.load(open('datos.json',encoding='utf-8'));print(len(d['matches']),sum(1 for m in d['matches'] if m.get('analyzed')))")
+          git add datos.json
+          git commit -q -m "Datos: $n partidos/analizados"
+          git push -q
+          echo "subido"

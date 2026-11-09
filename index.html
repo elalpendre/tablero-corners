@@ -152,6 +152,65 @@
   .pie{margin-top:30px;padding-top:14px;border-top:1px solid var(--raya);
        font-size:.84rem;color:var(--tenue)}
   .pie b{color:var(--tinta)}
+
+  /* ---- el latido: la barra que no se calla ---- */
+  @keyframes pulso{0%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 8px transparent}
+                   100%{box-shadow:0 0 0 0 transparent}}
+  @keyframes destello{0%,100%{background:var(--tabla)}45%{background:var(--cespedf)}}
+  .latido{display:flex;align-items:center;gap:7px 16px;flex-wrap:wrap;
+          background:var(--tabla);border:1px solid var(--raya);border-radius:12px;
+          padding:10px 14px;margin-bottom:12px;
+          font-family:var(--dato);font-size:.79rem;color:var(--tenue)}
+  .latido b{color:var(--tinta)}
+  .latido .vive{display:inline-flex;align-items:center;gap:7px;
+                font-family:var(--display);font-size:.82rem;font-weight:600;
+                text-transform:uppercase;letter-spacing:.1em}
+  .latido .vive .punto{width:9px;height:9px;border-radius:50%;
+                       background:currentColor;animation:pulso 1.7s infinite}
+  .latido .vive.verde{color:var(--cesped)}
+  .latido .vive.ambar{color:var(--aviso)}
+  .latido .vive.rojo{color:var(--rojo)}
+  .latido .vive.rojo .punto{animation:none}
+  .latido .sep{flex:1}
+  .latido button{padding:5px 11px;border-radius:999px;cursor:pointer;
+                 border:1px solid var(--raya);background:var(--fondo);
+                 font-family:var(--display);font-size:.76rem;font-weight:600;
+                 text-transform:uppercase;letter-spacing:.08em}
+  .latido button[aria-pressed=true]{border-color:var(--cesped);color:var(--cesped);
+                                    background:var(--cespedf)}
+
+  /* ---- la lista ---- */
+  .filtros{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 10px}
+  .filtros button{padding:6px 13px;border-radius:999px;cursor:pointer;
+                  border:1px solid var(--raya);background:var(--tabla);
+                  font-size:.82rem}
+  .filtros button[aria-pressed=true]{border-color:var(--cesped);color:var(--cesped);
+                                     background:var(--cespedf);font-weight:600}
+  .lista td,.lista th{padding:8px 10px;vertical-align:middle}
+  .lista .par{font-family:var(--display);font-size:.98rem;text-transform:uppercase;
+              line-height:1.15;letter-spacing:.005em}
+  .lista .lug{font-size:.73rem;color:var(--tenue);font-family:var(--texto);
+              text-transform:none;letter-spacing:0}
+  .lista tr.val td{background:var(--cespedf)}
+  .lista tr.nueva td{animation:destello 1.2s ease-in-out 3}
+  .lista .vent{font-family:var(--display);font-size:1.1rem;white-space:nowrap;
+               font-variant-numeric:tabular-nums;text-align:right}
+  .lista .vent.si{color:var(--cesped)}
+  .lista .vent.no{color:var(--tenue)}
+  .sello2{display:inline-block;font-family:var(--display);font-size:.65rem;
+          font-weight:600;text-transform:uppercase;letter-spacing:.09em;
+          border-radius:4px;padding:1px 5px;margin-right:6px;vertical-align:1px;
+          background:var(--frio);color:var(--tabla)}
+  .sello2.g{background:var(--raya);color:var(--tenue)}
+  .sello2.f{background:var(--aviso);color:var(--tabla)}
+  .casa{display:inline-block;padding:5px 10px;border-radius:8px;
+        border:1px solid var(--cesped);color:var(--cesped);background:var(--tabla);
+        text-decoration:none;font-family:var(--display);font-size:.74rem;
+        font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+        white-space:nowrap}
+  .casa:hover{background:var(--cespedf)}
+  .casa.gris{border-color:var(--raya);color:var(--tenue)}
+  .casas{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
   code{font-family:var(--dato);font-size:.85em}
 </style>
 </head>
@@ -163,6 +222,7 @@
     <div class="sello" id="sello">cargando…</div>
   </div>
 
+  <div class="latido" id="latido"></div>
   <nav class="pestanas" id="pestanas" role="tablist"></nav>
 
   <div id="vista"><p class="vacia">Leyendo…</p></div>
@@ -182,7 +242,15 @@
 
   var EV_MIN = 0.07;
   var D = null;                       // los datos
-  var VISTA = 'reco';
+  var VISTA = 'lista';
+  var FILTRO = 'todo';                // todo | corners | valor
+  var SONIDO = false;
+  var VISTOS = {};                    // lo que ya sono, para no repetir
+  var NUEVAS = {};                    // lo que acaba de aparecer, para el destello
+  var PRIMERA = true;                 // la primera carga no dispara la alarma
+  var PROX = 0;                       // cuando toca la siguiente lectura
+  var AC = null;                      // el aparato de sonido del navegador
+  var FIRMA = '';                     // la huella de los datos ya pintados
   var TF = 5;                         // minutos por vela
   var FOCO = null;                    // partido elegido en Velas
   var BANCO = 1000;
@@ -411,8 +479,209 @@
       + '<span class="ay">Kelly a un cuarto, tope del 5 %. De aquí sale cada importe.</span></div>';
   }
 
+  // ---------- las oportunidades, todas juntas y ordenadas ----------
+  // Una fila por mercado de cada partido analizado, mas una fila por franja
+  // de corners entera. La ventaja manda el orden: lo que mas paga de mas,
+  // arriba. Nada de mirar partido por partido.
+  function oportunidades() {
+    var out = [];
+    analizados().forEach(function (m) {
+      (m.markets || []).forEach(function (k) {
+        if (k.p == null || !k.odd) return;
+        out.push({ m: m, k: k, p: k.p, odd: k.odd,
+          ev: k.ev != null ? k.ev : k.p * k.odd - 1,
+          cor: k.type === 'corners',
+          id: m.id + '|' + k.type + '|' + k.side + '|' + k.line + '|' + k.odd });
+      });
+      var e = m.exactPlan;
+      if (e && e.nums && e.nums.length) {
+        out.push({ m: m, franja: e, p: e.P, odd: null, ev: e.ev, cor: true,
+          id: m.id + '|franja|' + e.nums.join('-') });
+      }
+    });
+    out.sort(function (a, b) { return (b.ev == null ? -9 : b.ev) - (a.ev == null ? -9 : a.ev); });
+    return out;
+  }
+
+  function filtradas() {
+    var L = oportunidades();
+    if (FILTRO === 'corners') L = L.filter(function (o) { return o.cor; });
+    if (FILTRO === 'valor') L = L.filter(function (o) { return o.ev >= EV_MIN; });
+    return L;
+  }
+
+  // ---------- el enlace a la casa ----------
+  // Enlace directo a un partido concreto no lo publica ninguna casa. Lo que
+  // si existe es el directo de futbol, y el buscador para ubicarlo rapido.
+  function casaURL() { return 'https://www.bet365.es/#/IP/B1'; }
+  function buscaURL(m) {
+    return 'https://www.flashscore.es/busqueda/?q=' + encodeURIComponent(m.home);
+  }
+  function enlaces(m) {
+    return '<div class="casas">'
+      + '<a class="casa" href="' + casaURL() + '" target="_blank" rel="noopener">Abrir bet365 en directo</a>'
+      + '<a class="casa gris" href="' + buscaURL(m) + '" target="_blank" rel="noopener">Buscar el partido</a>'
+      + '</div>';
+  }
+
+  // ---------- la alarma ----------
+  function pitido() {
+    try {
+      var A = window.AudioContext || window.webkitAudioContext;
+      if (!A) return;
+      if (!AC) AC = new A();
+      if (AC.state === 'suspended') AC.resume();
+      [0, 0.17, 0.34].forEach(function (t) {
+        var o = AC.createOscillator(), g = AC.createGain(), t0 = AC.currentTime + t;
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(t ? 1046 : 784, t0);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(0.22, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.15);
+        o.connect(g); g.connect(AC.destination);
+        o.start(t0); o.stop(t0 + 0.16);
+      });
+    } catch (e) {}
+  }
+
+  function alarma() {
+    var ahora = Date.now();
+    var L = oportunidades().filter(function (o) { return o.ev >= EV_MIN; });
+    var nuevas = L.filter(function (o) { return !VISTOS[o.id]; });
+    L.forEach(function (o) { VISTOS[o.id] = ahora; });
+    Object.keys(VISTOS).forEach(function (k) {
+      if (ahora - VISTOS[k] > 216e5) delete VISTOS[k];     // seis horas
+    });
+    guardar('tl.vistos', VISTOS);
+
+    NUEVAS = {};
+    if (PRIMERA) { PRIMERA = false; return; }               // al abrir, callada
+    if (!nuevas.length) return;
+    nuevas.forEach(function (o) { NUEVAS[o.id] = 1; });
+    if (SONIDO) pitido();
+    try {
+      if (window.Notification && Notification.permission === 'granted') {
+        var o = nuevas[0];
+        new Notification('Entrada con valor: ' + (o.ev * 100).toFixed(0) + ' %', {
+          body: o.m.home + ' - ' + o.m.away + ' / ' + (o.franja
+            ? 'franja de ' + o.franja.nums.join(', ') + ' corners'
+            : nombre(o.k) + ' a ' + o.odd),
+          tag: 'tl-' + o.id,
+        });
+      }
+    } catch (e) {}
+    document.title = '(' + nuevas.length + ') El tablero';
+  }
+
+  // ---------- la barra que late ----------
+  function latido() {
+    var n = document.getElementById('latido');
+    if (!n) return;
+    var cuando = D && D.momento ? Date.parse(D.momento) : 0;
+    var edad = cuando ? Math.max(0, Math.round((Date.now() - cuando) / 1000)) : null;
+    var falta = Math.max(0, Math.round((PROX - Date.now()) / 1000));
+    var cl = 'rojo', txt = 'sin datos';
+    if (edad != null) {
+      if (edad < 300) { cl = 'verde'; txt = 'en vivo'; }
+      else if (edad < 1500) { cl = 'ambar'; txt = 'con retraso'; }
+      else { cl = 'rojo'; txt = 'dormido'; }
+    }
+    var val = oportunidades().filter(function (o) { return o.ev >= EV_MIN; }).length;
+    var c = (D && D.cupo) || {};
+    var h = '<span class="vive ' + cl + '"><span class="punto"></span>' + txt + '</span>'
+      + '<span>datos de hace <b>' + (edad == null ? '-' : edad < 90 ? edad + ' s'
+          : Math.round(edad / 60) + ' min') + '</b></span>'
+      + '<span>releo en <b>' + falta + ' s</b></span>'
+      + '<span>con valor <b>' + val + '</b></span>';
+    if (c.limite_dia) h += '<span>API <b>' + c.quedan_hoy + '</b>/' + c.limite_dia + '</span>';
+    h += '<span class="sep"></span>'
+      + '<button id="snd" aria-pressed="' + SONIDO + '">'
+      + (SONIDO ? 'alarma armada' : 'armar alarma') + '</button>';
+    n.innerHTML = h;
+    document.getElementById('snd').onclick = function () {
+      SONIDO = !SONIDO;
+      guardar('tl.sonido', SONIDO);
+      if (SONIDO) {
+        pitido();                                          // para que la oiga ya
+        try {
+          if (window.Notification && Notification.permission === 'default') {
+            Notification.requestPermission();
+          }
+        } catch (e) {}
+      }
+      latido();
+    };
+  }
+
   // ---------- las vistas ----------
   var VISTAS = {
+    lista: { t: 'La lista', n: function () { return oportunidades().length; }, pinta: function () {
+      var L = filtradas(), todo = oportunidades();
+      var h = bancoHTML()
+        + '<div class="filtros">'
+        + [['todo', 'Todo (' + todo.length + ')'],
+           ['corners', 'Solo corners (' + todo.filter(function (o) { return o.cor; }).length + ')'],
+           ['valor', 'Solo con valor (' + todo.filter(function (o) { return o.ev >= EV_MIN; }).length + ')']]
+          .map(function (f) {
+            return '<button data-filtro="' + f[0] + '" aria-pressed="' + (FILTRO === f[0]) + '">'
+              + f[1] + '</button>';
+          }).join('')
+        + '</div>';
+
+      if (!L.length) {
+        return h + '<div class="vacia"><b>'
+          + (todo.length ? 'Ese filtro no deja nada.' : 'La lista esta vacia.') + '</b><br>'
+          + 'De los ' + vivos().length + ' partidos en juego hay <b>' + analizados().length
+          + '</b> analizado(s) y <b>' + vivos().filter(function (m) { return m.hasOdds; }).length
+          + '</b> con cuota publicada. Sin cuota no hay nada que comparar, y sin '
+          + 'estadisticas de corners el modelo no abre franja: prefiere callarse a '
+          + 'inventarse un numero.</div>';
+      }
+
+      h += '<table class="lista"><tr><th>Partido</th><th>Min</th><th>Que jugar</th>'
+        + '<th class="r">Prob</th><th class="r">Paga</th><th class="vent">Ventaja</th>'
+        + '<th class="r">Pones</th><th>Casa</th></tr>';
+
+      L.slice(0, 60).forEach(function (o) {
+        var m = o.m, si = o.ev >= EV_MIN;
+        var cls = (si ? ' val' : '') + (NUEVAS[o.id] ? ' nueva' : '');
+        var que, paga, pone;
+        if (o.franja) {
+          var T = BANCO * 0.05;
+          que = '<span class="sello2 f">franja</span>' + o.franja.nums.join(', ') + ' corners';
+          paga = 'reparto';
+          pone = eur(T);
+        } else {
+          que = '<span class="sello2' + (o.cor ? '' : ' g') + '">'
+            + (o.cor ? 'corner' : 'gol') + '</span>' + esc(nombre(o.k));
+          paga = o.odd.toFixed(2);
+          var im = importe(o.k);
+          pone = im ? eur(im.i) + (im.topado ? ' *' : '') : '-';
+        }
+        h += '<tr class="' + cls + '">'
+          + '<td><div class="par">' + esc(m.home) + '<br>' + esc(m.away) + '</div>'
+          + '<div class="lug">' + esc(m.league) + ' / ' + m.sH + '-' + m.sA
+          + ' / corners ' + (m.cH == null ? '?' : m.cH + '-' + m.cA) + '</div></td>'
+          + '<td class="d">' + m.min + '\'</td>'
+          + '<td>' + que + '</td>'
+          + '<td class="r">' + pct(o.p) + '</td>'
+          + '<td class="r">' + paga + '</td>'
+          + '<td class="vent ' + (si ? 'si' : 'no') + '">'
+          + (o.ev == null ? '-' : (o.ev >= 0 ? '+' : '') + (o.ev * 100).toFixed(1) + ' %') + '</td>'
+          + '<td class="r">' + pone + '</td>'
+          + '<td><a class="casa' + (si ? '' : ' gris') + '" href="' + casaURL()
+          + '" target="_blank" rel="noopener">Ir</a></td>'
+          + '</tr>';
+      });
+      h += '</table>';
+      if (L.length > 60) h += '<p class="li">Hay ' + L.length + '; muestro las 60 primeras.</p>';
+      h += '<p class="li" style="margin-top:10px">El boton <b>Ir</b> abre el directo de futbol '
+        + 'de bet365: el partido lo buscas tu ahi. Enlace que caiga en un partido concreto '
+        + 'no lo publica ninguna casa, y no voy a fingir que si. El <b>*</b> en el importe '
+        + 'quiere decir que Kelly pedia mas y lo ha cortado el tope del 5 %.</p>';
+      return h;
+    }},
+
     reco: { t: 'Recomendaciones', n: function () { return conValor().length; }, pinta: function () {
       var L = conValor();
       if (!L.length) {
@@ -579,6 +848,9 @@
       var v = Number(inp.value);
       if (v > 0) { BANCO = v; try { localStorage.setItem('tl.banco', String(v)); } catch (e) {} render(); }
     };
+    document.querySelectorAll('[data-filtro]').forEach(function (b) {
+      b.onclick = function () { FILTRO = b.dataset.filtro; render(); };
+    });
     document.querySelectorAll('[data-foco]').forEach(function (b) {
       b.onclick = function () { FOCO = Number(b.dataset.foco); render(); };
     });
@@ -588,17 +860,32 @@
   }
 
   function cargar() {
+    PROX = Date.now() + 30000;                   // cada 30 s, pase lo que pase
     return fetch('datos.json?t=' + Date.now())
       .then(function (r) { return r.json(); })
-      .then(function (j) { D = j; muestrear(); render(); })
+      // Releer no es repintar. Si el fichero no ha cambiado, tocar la pagina
+      // solo serviria para arrancarte el boton de debajo del dedo.
+      .then(function (j) {
+        var firma = JSON.stringify([j.momento, j.updated]);
+        D = j; muestrear();
+        if (firma !== FIRMA) { FIRMA = firma; alarma(); render(); }
+        latido();
+      })
       .catch(function (e) {
         document.getElementById('vista').innerHTML =
           '<div class="vacia"><b>No pude leer los datos.</b><br>' + esc(e.message) + '</div>';
       });
   }
 
+  function tic() {
+    latido();
+    if (Date.now() >= PROX) cargar();
+  }
+
+  SONIDO = leer('tl.sonido', false);
+  VISTOS = leer('tl.vistos', {});
   cargar();
-  setInterval(cargar, 60000);
+  setInterval(tic, 1000);
 })();
 </script>
 </body>
