@@ -266,6 +266,15 @@
     .lad .no{color:var(--tenue)}
     .pz .de{font:600 10px/1.3 var(--texto);letter-spacing:.06em;text-transform:uppercase;
         color:var(--tenue);margin:14px 0 4px}
+
+    /* La alarma arranca apagada porque el navegador no deja sonar sin que
+       el dedo la encienda una vez. Eso es obligado; que el boton pase
+       desapercibido, no. Apagada se ve desde la otra punta de la mesa. */
+    #snd[aria-pressed="false"]{background:var(--aviso);color:#fff;
+        border-color:var(--aviso);font-weight:700;letter-spacing:.03em;
+        animation:avisa 1.8s ease-in-out infinite}
+    @keyframes avisa{0%,100%{opacity:1}50%{opacity:.5}}
+    @media (prefers-reduced-motion:reduce){#snd[aria-pressed="false"]{animation:none}}
 </style>
 </head>
 <body>
@@ -799,7 +808,7 @@
     if (c.limite_dia) h += '<span>API <b>' + c.quedan_hoy + '</b>/' + c.limite_dia + '</span>';
     h += '<span class="sep"></span>'
       + '<button id="snd" aria-pressed="' + SONIDO + '">'
-      + (SONIDO ? 'alarma armada' : 'armar alarma') + '</button>';
+      + (SONIDO ? 'alarma armada' : 'EL SONIDO ESTA APAGADO · tocame') + '</button>';
     n.innerHTML = h;
     document.getElementById('snd').onclick = function () {
       SONIDO = !SONIDO;
