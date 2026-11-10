@@ -149,6 +149,15 @@
               background:var(--fondo);font-size:.76rem;cursor:pointer}
   .tfs button[aria-pressed=true]{border-color:var(--cesped);color:var(--cesped);font-weight:700}
 
+  /* ---------- la firma ---------- */
+  .firma{margin-top:22px;padding-top:16px;border-top:1px solid var(--raya);
+      text-align:center;font:italic 400 13px/1.6 var(--display);
+      letter-spacing:.04em;color:var(--tenue)}
+  .firma b{font-style:normal;font-weight:700;letter-spacing:.09em;
+      text-transform:uppercase;color:var(--tinta);display:block;
+      font-size:15px;margin-top:3px}
+  .firma span{display:block;margin-top:7px;font:400 10px/1.5 var(--texto);
+      letter-spacing:.1em;text-transform:uppercase;opacity:.55}
   .pie{margin-top:30px;padding-top:14px;border-top:1px solid var(--raya);
        font-size:.84rem;color:var(--tenue)}
   .pie b{color:var(--tinta)}
@@ -372,6 +381,17 @@
       por encima del 7 %. Las cuotas vienen de la API y son de referencia:
       el precio bueno es el que veas tú en bet365.</p>
     <p id="nota"></p>
+  </div>
+
+  <!-- La firma. La pidio el, y es justa: el diseno de esto es suyo. Las
+       decisiones que hacen que la herramienta valga algo —solo corners,
+       numeros exactos, 20 € por posicion, la regla de tres de las velas,
+       las tarjetas para medir la intensidad, fuera las copas de rondas
+       bajas— las puso Diego, no el codigo. -->
+  <div class="firma">
+    un artefacto diseñado por el ingenioso
+    <b>Diego</b>
+    <span>sólo córners · números exactos · 20 € por posición</span>
   </div>
 
 </div>
