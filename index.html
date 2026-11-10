@@ -301,9 +301,32 @@
     /* ---------- dormido ---------- */
     .duerme{margin:14px 0;padding:16px 18px;border-radius:6px;background:var(--avisof);
         border:1px solid var(--aviso);border-left-width:5px}
-    .duerme b{display:block;font:600 15px/1.3 var(--display);letter-spacing:.02em;
+    /* «> b» y no «b»: el titulo es el de fuera. Con «b» a secas, cada
+       negrita de dentro de los parrafos se convertia en un titular y el
+       aviso salia descuartizado: «NO TE LOS ENSEÑO» en una linea y «: un
+       minuto 32...» en otra. */
+    .duerme > b{display:block;font:600 15px/1.3 var(--display);letter-spacing:.02em;
         text-transform:uppercase;margin-bottom:6px}
     .duerme p{margin:6px 0 0;font-size:13px;line-height:1.5}
+    /* ---------- tabla comparativa ---------- */
+    .cmp{width:100%;border-collapse:collapse;margin:0 0 18px;font-size:13px}
+    .cmp th{font:700 10px/1.2 var(--texto);letter-spacing:.07em;text-transform:uppercase;
+        color:var(--tenue);text-align:left;padding:0 8px 6px;border-bottom:1px solid var(--raya);
+        white-space:nowrap}
+    .cmp td{padding:9px 8px;border-bottom:1px solid var(--raya);vertical-align:top}
+    .cmp tr:last-child td{border-bottom:0}
+    .cmp .np{font-weight:700}
+    .cmp .lg{display:block;font-size:11px;color:var(--tenue);margin-top:1px}
+    .cmp .n{font-family:var(--dato);font-variant-numeric:tabular-nums;white-space:nowrap}
+    .cmp .nums{font-family:var(--dato);font-weight:700;white-space:nowrap}
+    .cmp .sab{display:inline-block;min-width:30px;text-align:center;padding:2px 6px;
+        border-radius:3px;font-family:var(--dato);font-weight:700;font-size:12px}
+    .cmp .sab.poco{background:color-mix(in srgb,var(--rojo) 14%,transparent);color:var(--rojo)}
+    .cmp .sab.medio{background:var(--avisof);color:var(--aviso)}
+    .cmp .sab.mucho{background:var(--cespedf);color:var(--cesped)}
+    .cmp .no{color:var(--tenue)}
+    .cmp-env{overflow-x:auto}
+    .cmp-pie{font-size:11px;color:var(--tenue);margin:-10px 0 18px;line-height:1.5}
     /* ---------- historico ---------- */
     .hi{border-top:1px solid var(--raya);padding:10px 0}
     .hi:first-of-type{border-top:0}
@@ -657,7 +680,12 @@
   // si existe es el directo de futbol, y el buscador para ubicarlo rapido.
   function casaURL() { return 'https://www.bet365.es/#/IP/B1'; }
   function buscaURL(m) {
-    return 'https://www.flashscore.es/busqueda/?q=' + encodeURIComponent(m.home);
+    // Dos fichas distintas llegan aqui: la del panel en vivo trae «home» y
+    // «away» por separado, y la de la lista corta trae «partido» entero
+    // («Anaitasuna - Alaves»). Leyendo solo m.home, la lista corta buscaba
+    // «undefined» en Flashscore. Por eso el enlace tampoco servia alli.
+    var q = m.home || String(m.partido || '').split(/[–—-]/)[0].trim() || '';
+    return 'https://www.flashscore.es/busqueda/?q=' + encodeURIComponent(q);
   }
   function enlaces(m) {
     return '<div class="casas">'
@@ -910,7 +938,60 @@
       };
       h += '<div class="baja"><b>Bajas:</b> ' + uno(B.home) + ' · ' + uno(B.away) + '</div>';
     }
-    return h + franjaHTML(m) + '</div></div>';
+    // Los enlaces TAMBIEN aqui. enlaces() solo se llamaba desde barra(),
+    // que es la ficha del panel en vivo, asi que en la lista corta —la
+    // pestana donde de verdad se decide— no habia manera de abrir el
+    // partido en la casa. Es la pantalla desde la que se apuesta.
+    return h + franjaHTML(m) + enlaces(m) + '</div></div>';
+  }
+
+  // ---------- la tabla comparativa ----------
+  // Las fichas de abajo cuentan cada partido con detalle, y eso esta bien
+  // para leer uno. Para ELEGIR hace falta verlos en fila, con las mismas
+  // columnas, y comparar: cuanto sabemos, que dice el modelo, que numeros
+  // salen y a cuanto tienen que pagar para no perder.
+  //
+  // La columna que manda es «empatar»: es la cuota minima a la que la jugada
+  // sale a cero. Si bet365 paga menos que eso, no se entra. Es el numero que
+  // decide, no el porcentaje de cobertura, que siempre parece bueno.
+  function filaCmp(m, viene) {
+    var f6 = m.franja6 || {}, f3 = m.franja3 || {};
+    var sab = m.sabemos || 0;
+    var cl = sab >= 6 ? 'mucho' : sab >= 4 ? 'medio' : 'poco';
+    var h = new Date(Number(m.saque || 0));
+    var cuando = m.saque
+      ? h.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : '–';
+    var ex = (m.exactos || []).length;
+    return '<tr>'
+      + '<td><span class="np">' + esc(m.partido || '') + '</span>'
+        + '<span class="lg">' + esc(m.liga || '') + (m.pais ? ' · ' + esc(m.pais) : '') + '</span></td>'
+      + '<td class="n">' + (viene ? cuando : (m.min != null ? m.min + "'" : 'en juego')) + '</td>'
+      + '<td><span class="sab ' + cl + '">' + sab + '/8</span></td>'
+      + '<td class="n">' + (m.corners_modelo != null ? Number(m.corners_modelo).toFixed(1) : '–') + '</td>'
+      + '<td class="nums">' + (f6.numeros ? f6.numeros.join(' ') : '–') + '</td>'
+      + '<td class="n">' + (f6.cubre != null ? Math.round(f6.cubre * 100) + '%' : '–') + '</td>'
+      + '<td class="n">' + (f6.pones != null ? f6.pones + ' €' : '–') + '</td>'
+      + '<td class="n"><b>' + (f6.empatar != null ? Number(f6.empatar).toFixed(2) : '–') + '</b></td>'
+      + '<td class="n">' + (f3.numeros ? f3.numeros.join(' ') + ' · ' + Number(f3.empatar).toFixed(2) : '–') + '</td>'
+      + '<td class="n">' + (ex ? ex + ' cuotas' : '<span class="no">sin cuota</span>') + '</td>'
+      + '</tr>';
+  }
+  function tablaCmp() {
+    var v = listaDe('vienen'), a = listaDe('ahora');
+    if (!v.length && !a.length) return '';
+    var h = '<div class="cmp-env"><table class="cmp"><tr>'
+      + '<th>Partido</th><th>Cuándo</th><th>Sabemos</th><th>Modelo</th>'
+      + '<th>Franja de 6</th><th>Cubre</th><th>Pones</th><th>Empatar</th>'
+      + '<th>Franja de 3</th><th>Nº exactos</th></tr>';
+    h += a.map(function (m) { return filaCmp(m, false); }).join('');
+    h += v.map(function (m) { return filaCmp(m, true); }).join('');
+    h += '</table></div>';
+    h += '<p class="cmp-pie"><b>Empatar</b> es la cuota a la que la jugada sale a cero: '
+      + 'si bet365 paga menos que eso en alguno de los números, no se entra. Es la columna '
+      + 'que decide, no «cubre», que siempre parece buena. <b>Nº exactos</b> dice si la casa '
+      + 'cotiza números exactos en ese partido; sin cuota no hay jugada, sólo un cálculo.</p>';
+    return h;
   }
 
   function bloqueCorta(k, titulo, viene) {
@@ -952,7 +1033,20 @@
   // manda poner dinero se quedo sin congelar; y "prox" cuando es
   // "vienen". Un partido que "va a empezar" segun datos de hace
   // dieciseis horas ya se jugo entero.
-  var VIVAS = { lista: 1, ahora: 1, precios: 1, corta: 1, reco: 1, vienen: 1 };
+  // QUE SE CONGELA Y QUE NO. Me lo pense mal la primera vez.
+  //
+  // Un partido EN JUEGO si caduca: el minuto avanza, los corners cambian y
+  // ensenar la foto de hace una hora es mentir. Esas se congelan.
+  //
+  // Un partido que EMPIEZA MANANA no caduca. La alineacion probable, el
+  // arbitro, el estadio y el reparto de numeros valen igual a las tres que a
+  // las cuatro. Congelar eso era esconder lo unico que habia: la pestana
+  // ponia «Lista corta 2» y al abrirla no ensenaba nada. Un contador que
+  // promete dos partidos y una caja vacia debajo es peor que no tener nada.
+  //
+  // Asi que fuera «corta» y «vienen». Dentro de la lista corta, el bloque de
+  // los que estan jugandose ya dice su propia edad.
+  var VIVAS = { lista: 1, ahora: 1, precios: 1, reco: 1 };
   function avisoDormido() {
     var e = edadDatos();
     var cuanto = e == null ? 'nunca han llegado'
@@ -1235,6 +1329,7 @@
         + 'sabemos</b>, no los que más apetecen. El número grande es cuánto conocemos de '
         + 'cada uno, y las fichas de al lado dicen de dónde sale; lo tachado es lo que '
         + 'nos falta. Debajo, la franja a 3 y a 6 números con 20 € en cada uno.</p>'
+        + tablaCmp()
         + bloqueCorta('ahora', 'En juego ahora', false)
         + bloqueCorta('vienen', 'Los que vienen', true);
     } },
