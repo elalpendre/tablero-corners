@@ -80,6 +80,11 @@ def main():
     # esta abierto; es el mercado, guardado en el servidor.
     vel = pide('/velas') or []
     cor = pide('/corners') or {}
+    # La lista corta y los numeros exactos. Las dos SOLO LEEN lo que el
+    # worker ya tiene guardado: no gastan ni una llamada a la API, asi
+    # que pueden venir en cada recogida sin tocar el cupo.
+    lis = pide('/lista-corta?n=10') or {}
+    exa = pide('/exactos') or {}
 
     datos = {
         'momento': datetime.datetime.now(datetime.timezone.utc)
@@ -93,6 +98,8 @@ def main():
         'tablas': tab,
         'velas': vel if isinstance(vel, list) else [],
         'corners': cor if isinstance(cor, dict) else {},
+        'corta': lis if isinstance(lis, dict) else {},
+        'exactos': exa if isinstance(exa, dict) else {},
     }
     an = sum(1 for m in ms if m.get('analyzed'))
     print('   %d partidos, %d analizados, %d con cuota'

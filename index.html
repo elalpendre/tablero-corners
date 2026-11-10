@@ -275,6 +275,28 @@
         animation:avisa 1.8s ease-in-out infinite}
     @keyframes avisa{0%,100%{opacity:1}50%{opacity:.5}}
     @media (prefers-reduced-motion:reduce){#snd[aria-pressed="false"]{animation:none}}
+
+    /* ---------- la lista corta ---------- */
+    .cc{margin:12px 0 18px;border:1px solid var(--raya);border-radius:6px;
+        background:var(--tabla);overflow:hidden}
+    .cc>header{padding:11px 13px;border-bottom:1px solid var(--raya)}
+    .cc .q{font:600 15px/1.25 var(--display);letter-spacing:.02em;text-transform:uppercase}
+    .cc .sub{font-size:11px;color:var(--tenue);margin-top:2px}
+    .cc .cont{padding:11px 13px}
+    .sabe{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:7px}
+    .sabe b{font:700 19px/1 var(--dato);margin-right:4px}
+    .sabe i{font-style:normal;font:600 10px/1 var(--texto);letter-spacing:.04em;
+        text-transform:uppercase;padding:4px 7px;border-radius:3px;
+        background:var(--cespedf);color:var(--cesped);border:1px solid transparent}
+    .sabe i.falta{background:transparent;color:var(--tenue);border-color:var(--raya);
+        text-decoration:line-through;opacity:.7}
+    .dat{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+        gap:7px 14px;margin:11px 0 4px}
+    .dat div{font-size:12px;line-height:1.35}
+    .dat span{display:block;font:600 9px/1.3 var(--texto);letter-spacing:.07em;
+        text-transform:uppercase;color:var(--tenue)}
+    .baja{font-size:11px;color:var(--tenue);margin-top:5px;line-height:1.45}
+    .baja b{color:var(--tinta)}
 </style>
 </head>
 <body>
@@ -737,6 +759,122 @@
     return h + '</div></div>';
   }
 
+
+  // ---------- la lista corta ----------
+  function corta() { return (D && D.corta) || {}; }
+  function listaDe(k) { var b = corta()[k] || {}; return b.lista || []; }
+
+  // El puntaje, desglosado. Las piezas que faltan se ensenan tachadas:
+  // saber que NO sabemos el arbitro vale tanto como saber que si.
+  var PIEZAS = {
+    alineaciones: 'alineaciones', estadisticas: 'estadísticas', arbitro: 'árbitro',
+    tecnico: 'técnico', tiempo: 'tiempo', bajas: 'bajas', cuotas: 'cuotas',
+    numero_exacto: 'número exacto', historial_liga: 'historial', previa: 'previa',
+    minuto: 'minuto'
+  };
+  function sabeHTML(m) {
+    var h = '<div class="sabe"><b>' + m.sabemos + '</b>';
+    Object.keys(m.piezas || {}).forEach(function (k) {
+      h += '<i class="' + (m.piezas[k] ? '' : 'falta') + '">' + (PIEZAS[k] || k) + '</i>';
+    });
+    return h + '</div>';
+  }
+
+  function franjaHTML(m) {
+    var F = [['3 números', m.franja3], ['6 números', m.franja6]]
+      .filter(function (x) { return x[1]; });
+    if (!F.length) {
+      return '<div class="vacia" style="margin-top:10px">Sin reparto todavía: hace falta '
+        + 'que el modelo tenga estadísticas de córners de este partido.</div>';
+    }
+    var h = '<div class="de">A 20 € por número</div><table class="lad"><tr>'
+      + '<th>Franja</th><th>Números</th><th>Pones</th><th>Cubre</th>'
+      + '<th>Para empatar</th><th>+10%</th><th>+20%</th></tr>';
+    F.forEach(function (x) {
+      var f = x[1];
+      h += '<tr><td><span>' + x[0] + '</span></td>'
+        + '<td>' + f.numeros.join(' · ') + '</td>'
+        + '<td>' + f.pones + ' €</td>'
+        + '<td>' + Math.round(f.cubre * 1000) / 10 + '%</td>'
+        + '<td><b>' + f.empatar.toFixed(2) + '</b></td>'
+        + '<td class="ok">' + f.mas10.toFixed(2) + '</td>'
+        + '<td class="ok">' + f.mas20.toFixed(2) + '</td></tr>';
+    });
+    h += '</table>';
+    if (m.exactos && m.exactos.length) {
+      h += '<div class="de">Lo que la casa paga de verdad por un número suelto</div>'
+        + '<table class="lad"><tr><th>Número</th><th>Paga</th><th>Vale</th>'
+        + '<th>Ventaja</th><th>Casa</th></tr>';
+      m.exactos.forEach(function (e) {
+        var v = e.ventaja;
+        h += '<tr><td><span>' + e.numero + '</span></td>'
+          + '<td><b>' + (e.paga != null ? e.paga.toFixed(2) : '—') + '</b></td>'
+          + '<td>' + (e.vale != null ? e.vale.toFixed(2) : '—') + '</td>'
+          + '<td class="' + (v != null && v >= 7 ? 'ok' : 'no') + '">'
+          + (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1) + '%') + '</td>'
+          + '<td style="font-family:var(--texto);font-size:11px">' + esc(e.casa || '—') + '</td></tr>';
+      });
+      h += '</table>';
+    } else {
+      h += '<p class="li" style="margin-top:6px">La casa <b>no cotiza ningún número '
+        + 'suelto</b> en este partido. Las cuotas de arriba son las que tendría que pagar.</p>';
+    }
+    return h;
+  }
+
+  function fichaCorta(m, viene) {
+    var h = '<div class="cc"><header><div class="q">' + esc(m.partido) + '</div>'
+      + '<div class="sub">' + esc(m.liga || '') + (m.pais ? ' · ' + esc(m.pais) : '')
+      + (viene && m.saque ? ' · saca a las ' + hhmm(m.saque)
+          : (m.minuto != null ? " · minuto " + m.minuto : ''))
+      + (m.llevan != null ? ' · llevan ' + m.llevan + ' córners' : '')
+      + (m.corners_modelo != null ? ' · el modelo espera ' + m.corners_modelo : '')
+      + '</div>' + sabeHTML(m) + '</header><div class="cont">';
+    var D2 = [];
+    if (m.arbitro) D2.push(['Árbitro', esc(m.arbitro)]);
+    if (m.tecnicos && (m.tecnicos.home || m.tecnicos.away)) {
+      D2.push(['Técnicos', esc(m.tecnicos.home || '?') + ' / ' + esc(m.tecnicos.away || '?')]);
+    }
+    if (m.estadio) D2.push(['Estadio', esc(m.estadio) + (m.ciudad ? ', ' + esc(m.ciudad) : '')]);
+    if (m.temperatura != null) {
+      D2.push(['Tiempo', m.temperatura + ' °C' + (m.viento != null ? ' · viento ' + m.viento : '')]);
+    }
+    if (m.dibujos && (m.dibujos.home || m.dibujos.away)) {
+      D2.push(['Dibujos', esc(m.dibujos.home || '?') + ' vs ' + esc(m.dibujos.away || '?')]);
+    }
+    if (D2.length) {
+      h += '<div class="dat">' + D2.map(function (d) {
+        return '<div><span>' + d[0] + '</span>' + d[1] + '</div>';
+      }).join('') + '</div>';
+    }
+    var B = m.bajas || {};
+    if ((B.home && B.home.length) || (B.away && B.away.length)) {
+      var uno = function (l) {
+        return (l || []).map(function (x) { return esc(x.n); }).join(', ') || 'ninguna';
+      };
+      h += '<div class="baja"><b>Bajas:</b> ' + uno(B.home) + ' · ' + uno(B.away) + '</div>';
+    }
+    return h + franjaHTML(m) + '</div></div>';
+  }
+
+  function bloqueCorta(k, titulo, viene) {
+    var b = corta()[k] || {}, L = b.lista || [];
+    var h = '<h2>' + titulo + '</h2>';
+    if (!L.length) {
+      h += '<div class="vacia"><b>Ninguno de primera división'
+        + (viene ? ' en las próximas horas.' : ' en juego ahora mismo.') + '</b><br>'
+        + 'De ' + (b.total || 0) + ' que hay, <b>' + (b.fuera_del_filtro || 0)
+        + '</b> son de ligas que no seguimos. No te los enseño en vez de rellenar '
+        + 'la pantalla con fútbol que no vas a jugar.</div>';
+      return h;
+    }
+    if (b.fuera_del_filtro) {
+      h += '<p class="li">' + L.length + ' de primera división. Dejo fuera <b>'
+        + b.fuera_del_filtro + '</b> de ligas que no seguimos.</p>';
+    }
+    return h + L.map(function (m) { return fichaCorta(m, viene); }).join('');
+  }
+
   function pitido() {
     try {
       var A = window.AudioContext || window.webkitAudioContext;
@@ -929,6 +1067,20 @@
 
   // ---------- las vistas ----------
   var VISTAS = {
+    corta: { t: 'Lista corta', n: function () {
+      return listaDe('vienen').length + listaDe('ahora').length;
+    }, pinta: function () {
+      if (!corta().vienen && !corta().ahora) {
+        return '<div class="vacia"><b>Todavía no ha llegado la lista corta.</b><br>'
+          + 'La escribe el worker y la recoge la publicación; aparecerá en la próxima.</div>';
+      }
+      return '<p class="li" style="margin:0 0 14px">Los partidos de los que <b>más '
+        + 'sabemos</b>, no los que más apetecen. El número grande es cuánto conocemos de '
+        + 'cada uno, y las fichas de al lado dicen de dónde sale; lo tachado es lo que '
+        + 'nos falta. Debajo, la franja a 3 y a 6 números con 20 € en cada uno.</p>'
+        + bloqueCorta('ahora', 'En juego ahora', false)
+        + bloqueCorta('vienen', 'Los que vienen', true);
+    } },
     precios: { t: 'Precios', n: function () {
       return vivos().filter(function (m) { return precio(m); }).length;
     }, pinta: function () {
