@@ -20,9 +20,23 @@ name: datos
 
 on:
   schedule:
-    # Cada 10 minutos, de 11:00 a 22:59 UTC: la franja en la que hay
-    # futbol en Europa. De madrugada no hay nada que mirar.
-    - cron: '*/10 11-22 * * *'
+    # Cada 5 minutos, en minutos raros, de 10:00 a 22:59 UTC.
+    #
+    # NO es que haga falta mirar cada cinco minutos: el worker se defiende
+    # solo y contesta «no tocaba» si no han pasado cuatro, sin gastar una
+    # sola llamada a la API. Es que GitHub TIRA las pasadas programadas
+    # cuando sus maquinas van cargadas, y las tira sobre todo en los
+    # minutos redondos (:00, :10, :20...), que es cuando el mundo entero
+    # tiene puesto su cron.
+    #
+    # Medido en este repositorio: con el cron de diez minutos redondos
+    # tocaba ejecutarse unas 72 veces el 9 de noviembre y se ejecuto UNA,
+    # a las 00:18, hora y media despues de cerrarse la franja. Las otras
+    # 71 las tiro GitHub sin avisar.
+    #
+    # Asi que el doble de intentos, en minutos que casi nadie usa. Si
+    # GitHub tira la mitad, los datos siguen entrando cada diez minutos.
+    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 10-22 * * *'
   workflow_dispatch:        # y a mano, con un boton, cuando quieras
 
 # Solo escribir en este repositorio. Nada mas.
