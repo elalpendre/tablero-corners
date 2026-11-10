@@ -1050,8 +1050,13 @@
   function latido() {
     var n = document.getElementById('latido');
     if (!n) return;
-    var cuando = D && D.momento ? Date.parse(D.momento) : 0;
-    var edad = cuando ? Math.max(0, Math.round((Date.now() - cuando) / 1000)) : null;
+    // TERCERA COPIA DE LA MISMA CUENTA, y era la unica que quedaba
+    // mintiendo: leia D.momento, que con /foto es SIEMPRE ahora, asi que la
+    // barra ponia «datos de hace 5 s» con un dato de hace 23 minutos. Justo
+    // encima, el sello decia la hora buena. Dos numeros en la misma pantalla
+    // diciendo cosas distintas.
+    // Una sola cuenta: la de edadDatos(), que mide la ultima pasada DE VERDAD.
+    var edad = edadDatos();
     var falta = Math.max(0, Math.round((PROX - Date.now()) / 1000));
     var cl = 'rojo', txt = 'sin datos';
     if (edad != null) {
@@ -1066,7 +1071,10 @@
           : Math.round(edad / 60) + ' min') + '</b></span>'
       + '<span>releo en <b>' + falta + ' s</b></span>'
       + '<span>con valor <b>' + val + '</b></span>';
+    // El cupo: con /foto no se consulta (preguntarlo gasta una llamada), asi
+    // que viene el ultimo que vimos. Se dice que es eso y no el de ahora.
     if (c.limite_dia) h += '<span>API <b>' + c.quedan_hoy + '</b>/' + c.limite_dia + '</span>';
+    else if (c.quedan_hoy != null) h += '<span>API <b>' + c.quedan_hoy + '</b> <span class="mut">(último visto)</span></span>';
     h += '<span class="sep"></span>'
       + '<button id="snd" aria-pressed="' + SONIDO + '">'
       + (SONIDO ? 'alarma armada' : 'EL SONIDO ESTA APAGADO · tocame') + '</button>';
