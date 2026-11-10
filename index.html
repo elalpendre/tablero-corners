@@ -936,7 +936,12 @@
   // Cuanto hace que son los datos. Mas de 25 minutos y los partidos que
   // enseñabamos ya no estan donde decimos: han avanzado o han acabado.
   function edadDatos() {
-    var c = D && D.momento ? Date.parse(D.momento) : 0;
+    // La edad que importa es la del DATO, no la de la foto. El worker sirve
+    // /foto al instante, asi que su «momento» es siempre ahora: midiendo eso
+    // la pagina creeria que todo esta fresco aunque la ultima pasada fuese
+    // de hace tres horas, y el aviso de dormido no saltaria nunca.
+    var c = D && D.ultima_pasada ? Number(D.ultima_pasada)
+          : (D && D.momento ? Date.parse(D.momento) : 0);
     return c ? Math.max(0, Math.round((Date.now() - c) / 1000)) : null;
   }
   function duerme() { var e = edadDatos(); return e == null || e > 1500; }
@@ -1614,10 +1619,31 @@
     });
   }
 
+  // DE DONDE SALEN LOS DATOS, Y EN QUE ORDEN
+  // 1) el worker, en /foto: la hora de verdad. Solo lee su base de datos,
+  //    no gasta ni una llamada a la API, y no lleva clave porque esta
+  //    pagina es publica: una clave aqui la veria cualquiera.
+  // 2) datos.json, lo ultimo que publico el recolector, si el worker no
+  //    contesta. Asi la pagina sigue ensenando algo y diciendo de cuando es.
+  //
+  // GitHub ya no esta en el camino porque no entregaba: el 9 y el 10 de
+  // noviembre tocaban mas de cien pasadas programadas y salio UNA, a las
+  // 00:18. Se queda como respaldo, que para eso si vale.
+  var FOTO = 'https://tiros-libre.alpendre.workers.dev/foto';
   function cargar() {
-    PROX = Date.now() + 30000;                   // cada 30 s, pase lo que pase
-    return fetch('datos.json?t=' + Date.now())
-      .then(function (r) { return r.json(); })
+    // 10 s. /foto se cachea 5 s en el borde de Cloudflare, asi que pedirla
+    // a este ritmo casi nunca ejecuta el worker. Que la pagina vaya a 10 s
+    // no significa que el dato sea de hace 10 s: con el plan gratis el
+    // worker mira cada 45 minutos.
+    PROX = Date.now() + 10000;
+    return fetch(FOTO + '?t=' + Date.now())
+      .then(function (r) {
+        if (!r.ok) throw new Error('http ' + r.status);
+        return r.json();
+      })
+      .catch(function () {
+        return fetch('datos.json?t=' + Date.now()).then(function (r) { return r.json(); });
+      })
       // Releer no es repintar. Si el fichero no ha cambiado, tocar la pagina
       // solo serviria para arrancarte el boton de debajo del dedo.
       .then(function (j) {
