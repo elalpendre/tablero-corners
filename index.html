@@ -1590,10 +1590,19 @@
     // partidos viejos como si estuvieran jugandose.
     document.getElementById('vista').innerHTML =
       (duerme() && VIVAS[VISTA]) ? avisoDormido() : VISTAS[VISTA].pinta();
-    document.getElementById('sello').textContent = D.updated
-      ? 'última pasada: ' + new Date(D.updated).toLocaleString('es-ES',
-          { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-      : 'sin pasada';
+    // DOS COSAS DISTINTAS, Y ANTES SE DECIAN IGUAL.
+    // D.updated es la hora del ultimo partido EN VIVO que se vio; es null
+    // cuando no hay ninguno, y entonces la pagina ponia «sin pasada», que
+    // es falso: la pasada se hizo, lo que no habia era futbol. En semana de
+    // selecciones eso saldria toda la semana diciendo una mentira.
+    var sello = function (ms, que) {
+      return que + ': ' + new Date(Number(ms)).toLocaleString('es-ES',
+        { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    };
+    document.getElementById('sello').textContent =
+      D.updated ? sello(D.updated, 'última pasada')
+      : D.ultima_pasada ? sello(D.ultima_pasada, 'mirado') + ' · ningún partido en vivo'
+      : 'todavía no se ha mirado nada';
     var vac = ['casa_log', 'team_hist', 'alerts'].filter(function (k) { return (D.tablas || {})[k] === 0; });
     document.getElementById('nota').textContent = vac.length
       ? 'Las tablas ' + vac.join(', ') + ' están vacías porque con 100 llamadas al día casi '
