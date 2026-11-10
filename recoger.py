@@ -85,6 +85,7 @@ def main():
     # que pueden venir en cada recogida sin tocar el cupo.
     lis = pide('/lista-corta?n=10') or {}
     exa = pide('/exactos') or {}
+    his = pide('/historico?n=40') or {}
 
     datos = {
         'momento': datetime.datetime.now(datetime.timezone.utc)
@@ -100,6 +101,7 @@ def main():
         'corners': cor if isinstance(cor, dict) else {},
         'corta': lis if isinstance(lis, dict) else {},
         'exactos': exa if isinstance(exa, dict) else {},
+        'historico': his if isinstance(his, dict) else {},
     }
     an = sum(1 for m in ms if m.get('analyzed'))
     print('   %d partidos, %d analizados, %d con cuota'
