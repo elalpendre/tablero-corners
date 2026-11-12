@@ -439,6 +439,165 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);
 .vp .l1{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
 .vp u{text-decoration:none;color:var(--tenue);font-size:.66rem;margin-left:auto}
 .vp{max-width:17rem}
+
+/* ======================================================================
+   LA PIEL NUEVA. Va al final a proposito: las reglas de despues ganan.
+   Los tres selectores repetidos porque :root:not([data-theme="light"])
+   tiene mas especificidad que :root y si no se repite, en modo oscuro
+   ganaria la paleta vieja.
+   ====================================================================== */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"]{
+  --fondo:#080b11; --tabla:#111823; --tinta:#f3f7ff; --tenue:#8ea6c8;
+  --raya:#243550;
+  --cesped:#2bff8c; --cespedf:#06301b;      /* verde neon */
+  --aviso:#ffb62e; --avisof:#33230a;        /* ambar */
+  --rojo:#ff4f63;                            /* rojo de aviso */
+  --frio:#3fc9ff;                            /* azul electrico */
+  --sube:#2bff8c; --baja:#ff4f63;
+  --oro:#ffd24a; --magenta:#ff52cf;
+  --luzv:0 0 22px rgba(43,255,140,.30);
+  --luza:0 0 22px rgba(255,182,46,.28);
+  --luzr:0 0 26px rgba(255,79,99,.45);
+  color-scheme:dark;
+}
+/* El fieltro: dos luces lejanas sobre negro. Fijo, para que no se mueva
+   al deslizar y maree. */
+body{
+  background:
+    radial-gradient(900px 520px at 12% -8%, rgba(43,255,140,.10) 0%, transparent 62%),
+    radial-gradient(900px 520px at 88% -4%, rgba(63,201,255,.10) 0%, transparent 62%),
+    var(--fondo);
+  background-attachment:fixed;
+}
+/* El titulo, de oro a verde. Si el navegador no sabe recortar el fondo al
+   texto se queda en blanco normal, que tambien vale. */
+h1{
+  background:linear-gradient(92deg,var(--oro),var(--cesped) 55%,var(--frio));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 16px rgba(255,210,74,.25));
+}
+.caja{
+  background:linear-gradient(180deg,rgba(255,255,255,.035),transparent 55%),var(--tabla);
+  border-color:var(--raya);
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 10px 26px rgba(0,0,0,.45);
+}
+/* La ficha con valor se enciende por el borde izquierdo. Es la diferencia
+   entre «hay dinero aqui» y «esto es solo informacion», asi que tiene que
+   verse desde el otro lado de la mesa. */
+.caja.valor{border-left:4px solid var(--cesped);box-shadow:var(--luzv),0 10px 26px rgba(0,0,0,.45)}
+.caja.ojo{border-left:4px solid var(--aviso);box-shadow:var(--luza),0 10px 26px rgba(0,0,0,.45)}
+.eq{font-size:1.45rem;letter-spacing:.01em;text-shadow:0 2px 14px rgba(0,0,0,.5)}
+.cinta{height:5px;box-shadow:0 0 14px rgba(0,0,0,.6)}
+
+/* Las cifras, grandes y con luz. */
+.op{background:linear-gradient(180deg,rgba(255,255,255,.03),transparent),#0d141e;
+    border-color:var(--raya)}
+.op.top{border-color:var(--cesped);background:linear-gradient(90deg,var(--cespedf),#0d141e 70%)}
+.op .v{font-size:1.5rem;font-weight:600}
+.op .v.si{color:var(--cesped);text-shadow:var(--luzv)}
+.op .bar i{background:linear-gradient(90deg,var(--frio),var(--cesped));
+           box-shadow:var(--luzv)}
+.ritmo b{color:var(--oro);text-shadow:0 0 14px rgba(255,210,74,.35)}
+
+h2{color:var(--oro);letter-spacing:.18em;opacity:.95}
+table{background:var(--tabla);border-color:var(--raya)}
+td,th{border-color:var(--raya)}
+th{color:var(--oro)}
+
+/* Las pestanas: la elegida con su linea encendida. */
+.pestanas{background:rgba(8,11,17,.92);backdrop-filter:blur(8px)}
+.pestanas button[aria-selected=true]{color:var(--cesped);
+  border-bottom-color:var(--cesped);text-shadow:var(--luzv)}
+.pestanas .cuantos{background:#1b2740;color:var(--tinta)}
+.pestanas button[aria-selected=true] .cuantos{background:var(--cesped);color:#04140b;
+  box-shadow:var(--luzv)}
+
+.latido{background:linear-gradient(180deg,rgba(255,255,255,.04),transparent),var(--tabla);
+        border-color:var(--raya)}
+button.onon{background:var(--cesped);color:#04140b;box-shadow:var(--luzv)}
+button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#04140b;
+               box-shadow:var(--luzv)}
+
+/* EL CARTEL DE CIERRA VUELVE A PARPADEAR. Se lo habia quitado leyendo al
+   reves lo que pidio. Es el unico aviso de la pantalla que vale dinero si
+   se pierde de vista, asi que es el unico que tiene permiso para moverse. */
+.cierra{background:linear-gradient(90deg,var(--rojo),var(--magenta));
+        box-shadow:var(--luzr);animation:late 1.1s ease-in-out infinite}
+@keyframes late{0%,100%{opacity:1;box-shadow:var(--luzr)}
+                50%{opacity:.62;box-shadow:0 0 6px rgba(255,79,99,.25)}}
+
+/* La cinta de lo que acaba de pasar, encendida por el borde. */
+.vp{background:linear-gradient(90deg,rgba(255,255,255,.05),transparent),#0d141e}
+.v-gol{border-left-color:var(--cesped);box-shadow:-3px 0 14px rgba(43,255,140,.35)}
+.v-corner{border-left-color:var(--frio);box-shadow:-3px 0 14px rgba(63,201,255,.30)}
+.v-roja{border-left-color:var(--rojo);box-shadow:-3px 0 14px rgba(255,79,99,.40)}
+.vp.mio{background:linear-gradient(90deg,var(--cespedf),#0d141e 70%);border-color:var(--cesped)}
+
+.vacia{background:var(--tabla);border-color:var(--raya)}
+.banco,.grafico,.selv button,.velasel button,.tfs button,.fig{background:var(--tabla)}
+.banco input[type=number]{background:#0d141e;border-color:var(--raya);color:var(--tinta)}
+.pista{background:#0d141e;border-color:var(--raya)}
+.pista i{background:linear-gradient(90deg,var(--frio),var(--cesped))}
+.firma b{color:var(--oro)}
+/* ---- la campana ---- */
+.cuenta{display:flex;gap:16px;flex-wrap:wrap;align-items:baseline;
+        background:#0d141e;border:1px solid var(--raya);border-radius:10px;
+        padding:10px 13px;margin-bottom:11px;
+        font-family:var(--dato);font-size:.78rem;color:var(--tenue)}
+.cuenta b{color:var(--oro);font-size:1.02rem;text-shadow:0 0 12px rgba(255,210,74,.35)}
+.camp{display:flex;flex-direction:column;gap:4px}
+.cf{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+    padding:5px 9px;border-radius:8px;background:#0d141e;
+    border:1px solid transparent;font-family:var(--dato);font-size:.78rem}
+.cf .cn{width:2.1rem;text-align:right;font-size:1.05rem;font-weight:700;
+        color:var(--tinta);flex:none}
+.cf .cb{flex:1;min-width:5rem;height:12px;background:#121a27;border-radius:999px;
+        overflow:hidden}
+/* Una sola gama para la magnitud, de azul a verde, y el mas probable en
+   oro. El color dice cuanto; la cifra de al lado lo dice tambien, asi que
+   quien no distinga los colores lee lo mismo. */
+.cf .cb i{display:block;height:100%;border-radius:999px;
+          background:linear-gradient(90deg,#1c5c86,var(--frio))}
+.cf.pico .cb i{background:linear-gradient(90deg,var(--oro),var(--cesped));
+               box-shadow:var(--luzv)}
+.cf .cp{width:4rem;text-align:right;color:var(--tinta);font-weight:700;flex:none}
+.cf .cq{color:var(--tenue);white-space:nowrap}
+.cf .cq b{color:var(--frio)}
+.cf .cc{padding:1px 8px;border-radius:999px;font-size:.72rem;white-space:nowrap;
+        border:1px solid var(--raya);color:var(--tenue)}
+/* ENTRA lleva la palabra, no solo el color: en blanco y negro se lee igual. */
+.cf .cc.si{background:var(--cespedf);border-color:var(--cesped);color:var(--cesped);
+           font-weight:700;box-shadow:var(--luzv)}
+.cf .cc.no{opacity:.65}
+.cf .cc.sinq{opacity:.45}
+.cf.pico{background:linear-gradient(90deg,rgba(255,210,74,.10),#0d141e 65%)}
+.cf.pico .cn{color:var(--oro);text-shadow:0 0 14px rgba(255,210,74,.45)}
+.cf .cpico{color:var(--oro);font-size:.7rem;text-transform:uppercase;letter-spacing:.07em}
+/* Lo que Diego tiene puesto, marcado de verdad: es su dinero y tiene que
+   encontrarlo sin buscar. */
+.cf.mio{border-color:var(--magenta);background:linear-gradient(90deg,rgba(255,82,207,.14),#0d141e 65%)}
+.cf .cmio{background:var(--magenta);color:#1a0314;font-weight:700;font-size:.68rem;
+          padding:1px 7px;border-radius:999px;letter-spacing:.08em;
+          box-shadow:0 0 16px rgba(255,82,207,.5)}
+.camppie{margin-top:9px;line-height:1.55}
+/* Los enlaces dentro de la tabla de los que no se analizan. */
+td .casas{margin-top:7px}
+@media (max-width:640px){
+  .cf .cq,.cf .cc{font-size:.7rem}
+  .cf .cb{min-width:3.5rem}
+}
+/* ---- el boton de apuntar ---- */
+.apu{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:11px}
+.apu button{padding:7px 15px;border-radius:999px;cursor:pointer;
+            border:1px solid var(--magenta);background:rgba(255,82,207,.12);
+            color:var(--magenta);font-family:var(--display);font-size:.8rem;
+            font-weight:600;text-transform:uppercase;letter-spacing:.07em}
+.apu button:hover{background:var(--magenta);color:#1a0314;
+                  box-shadow:0 0 18px rgba(255,82,207,.5)}
+.apu span{font-size:.75rem;color:var(--tenue)}
+.apu.ya{font-size:.78rem;color:var(--magenta);font-family:var(--dato);
+        border:1px dashed var(--magenta);border-radius:8px;padding:6px 11px;
+        background:rgba(255,82,207,.08)}
 </style>
 </head>
 <body>
@@ -807,7 +966,21 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);
       + (m.hasStats ? '<span>córners <b>' + m.cH + '-' + m.cA + '</b></span>' : '')
       + (m.rH + m.rA ? '<span>rojas <b>' + m.rH + '-' + m.rA + '</b></span>' : '')
       + '</div>'
+      + apuntarHTML(m)
       + ritmoHTML(m);
+  }
+
+  // El boton de apuntar, en la ficha del partido. Antes habia que
+  // cambiar de pestana y buscar el partido en una lista de sesenta: con
+  // esa friccion no se apunta nada, y la alarma de cerrar SOLO vigila lo
+  // que esta apuntado. Una alarma que nadie arma no existe.
+  function apuntarHTML(m) {
+    if (POS && POS[m.id]) {
+      return '<div class="apu ya">Lo estás vigilando · la alarma de cerrar mira este partido</div>';
+    }
+    return '<div class="apu"><button type="button" onclick="window.tlPos.desde(\''
+      + esc(String(m.id)) + '\')">Apuntar mi jugada aquí</button>'
+      + '<span>para que la alarma de cerrar lo vigile</span></div>';
   }
 
   // La dureza del partido, medida y no intuida: faltas y amarillas por 90
@@ -895,6 +1068,95 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);
       + 'que tiene que pagar cada número para empatar a la larga. La columna '
       + '<b>con valor</b> ya lleva el 7 % de ventaja que pedimos para entrar. Si bet365 '
       + 'paga menos que eso, no se entra aunque apetezca.</p>';
+  }
+
+  // ---------- la campana: que puede acabar pasando ----------
+  // Lo que pidio Diego, con sus palabras: probabilidad segun los minutos
+  // jugados, los 95 que dura el partido con los anadidos, los cornes que
+  // llevan, y al lado LO QUE TIENE QUE PAGAR LA CASA.
+  //
+  //     cuota minima = 1 / probabilidad
+  //
+  // Si bet365 paga mas que eso, entra. Si paga menos, no entra aunque
+  // apetezca. Toda la decision es comparar esos dos numeros, y hasta
+  // ahora habia que hacerlo a mano mirando el movil.
+  //
+  // El reparto ya lo calculaba el motor y no se ensenaba en ningun sitio.
+  function campanaHTML(m) {
+    var pm = m.pmfC;
+    if (!pm || !pm.length || !m.hasStats) return '';
+    var van = (m.cH || 0) + (m.cA || 0);
+    var mi = m.min == null ? 0 : m.min;
+    var n;
+
+    // Las cuotas que la casa SI publica, numero a numero. Vienen del plan
+    // de la franja, que es donde el motor las guarda.
+    var casa = {}, e = m.exactPlan;
+    if (e && e.nums && e.odds) e.nums.forEach(function (x, i) { casa[x] = e.odds[i]; });
+
+    // Los numeros que tiene puestos EN ESTE partido.
+    var mios = {}, p = POS && POS[m.id];
+    if (p && p.puestas) p.puestas.forEach(function (q) { mios[q.n] = 1; });
+
+    // Desde los que llevan: un numero por debajo ya no puede salir, y
+    // ensenarlo seria ofrecer algo que no existe.
+    var desde = van, hasta = desde;
+    for (n = desde; n < pm.length; n++) if (pm[n] >= 0.008) hasta = n;
+    if (hasta < desde + 4) hasta = Math.min(pm.length - 1, desde + 4);
+    // Los que tenga puestos salen aunque pesen poco: si ha puesto dinero
+    // en el 13, el 13 tiene que estar en la tabla.
+    Object.keys(mios).forEach(function (k) {
+      var x = Number(k);
+      if (x > hasta && x < pm.length) hasta = x;
+    });
+
+    var mx = 0, pico = desde;
+    for (n = desde; n <= hasta; n++) if ((pm[n] || 0) > mx) { mx = pm[n]; pico = n; }
+
+    var ritmo = mi > 0 ? van / mi : 0;
+    var h = '<h2>La campana · qué puede acabar pasando</h2>'
+      + '<div class="cuenta">'
+      + '<span>llevan <b>' + van + '</b> córners</span>'
+      + '<span>minuto <b>' + mi + '</b></span>'
+      + '<span>quedan <b>' + Math.max(0, 95 - mi) + "'</b> con añadidos</span>"
+      + '<span>a este paso <b>' + (mi >= 15 ? Math.round(ritmo * 95) : '–') + '</b></span>'
+      + '<span>el modelo <b>' + (m.expC == null ? '–' : Number(m.expC).toFixed(1)) + '</b></span>'
+      + '</div><div class="camp">';
+
+    for (n = desde; n <= hasta; n++) {
+      var pr = pm[n] || 0;
+      var minc = pr > 0 ? 1 / pr : null;
+      var o = casa[n] == null ? null : Number(casa[n]);
+      var ancho = mx > 0 ? (pr / mx * 100) : 0;
+      var cl = (n === pico ? ' pico' : '') + (mios[n] ? ' mio' : '');
+      // ENTRA o no sale de comparar, no de opinar: la casa tiene que
+      // pagar mas que la cuota minima.
+      var entra = (o != null && minc != null && o > minc);
+      h += '<div class="cf' + cl + '">'
+        + '<span class="cn">' + n + '</span>'
+        + '<span class="cb"><i style="width:' + ancho.toFixed(1) + '%"></i></span>'
+        + '<span class="cp">' + (pr * 100).toFixed(1) + ' %</span>'
+        + '<span class="cq">' + (minc == null || minc > 999 ? 'ni pagando' : 'paga más de <b>' + minc.toFixed(2) + '</b>') + '</span>'
+        + (o != null
+            ? '<span class="cc ' + (entra ? 'si' : 'no') + '">la casa ' + o.toFixed(2)
+              + ' · ' + (entra ? 'ENTRA' : 'no llega') + '</span>'
+            : '<span class="cc sinq">sin cuota</span>')
+        + (mios[n] ? '<span class="cmio">TUYO</span>' : '')
+        + (n === pico ? '<span class="cpico">el más probable</span>' : '')
+        + '</div>';
+    }
+    h += '</div>';
+
+    // Donde esta el peso. Es lo que de verdad decide si una franja de
+    // numeros altos tiene sentido o es una loteria.
+    var bajo = 0, alto = 0, corte = Math.round(Number(m.expC == null ? pico : m.expC));
+    for (n = desde; n < pm.length; n++) (n <= corte ? (bajo += pm[n]) : (alto += pm[n]));
+    h += '<p class="li camppie">De <b>' + desde + '</b> a <b>' + corte + '</b> córners hay un <b>'
+      + Math.round(bajo * 100) + ' %</b>; de <b>' + (corte + 1) + '</b> para arriba, un <b>'
+      + Math.round(alto * 100) + ' %</b>. La columna de la derecha es lo que bet365 tiene que '
+      + 'pagar por ese número para que la apuesta salga a cero a la larga: '
+      + '<b>si paga más, entra; si paga menos, no entra aunque apetezca</b>.</p>';
+    return h;
   }
 
   function sectores(m) {
@@ -1796,6 +2058,19 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);
   // El script vive dentro de una funcion anonima: un onclick escrito en
   // el HTML no ve nada de aqui dentro. Se expone lo justo y nada mas.
   window.tlPos = {
+    // Desde la ficha del partido: abre la pestana de posiciones con ESTE
+    // partido ya elegido y el cursor puesto en los numeros. Lo unico que
+    // queda por escribir es lo que el sistema no puede saber —que
+    // numeros, cuanto y a que cuota— porque eso pasa en bet365, no aqui.
+    desde: function (fid) {
+      VISTA = 'posiciones';
+      render();
+      window.scrollTo(0, 0);
+      var s = document.getElementById('pFid');
+      if (s) s.value = String(fid);
+      var n = document.getElementById('pNums');
+      if (n) n.focus();
+    },
     anadir: function () {
       var fid = (document.getElementById('pFid') || {}).value;
       var ns = String((document.getElementById('pNums') || {}).value || '')
@@ -2238,7 +2513,7 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);
           h += '<div class="caja' + (m.best && m.best.ev >= EV_MIN ? ' valor' : ' ojo') + '">'
             + cabecera(m) + barra(m);
           (m.markets || []).slice(0, 3).forEach(function (k, i) { h += opcion(k, false); });
-          h += sectores(m) + '</div>';
+          h += campanaHTML(m) + sectores(m) + '</div>';
         });
       }
       if (resto.length) {
@@ -2257,7 +2532,8 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);
             + (m.country ? ' · ' + esc(m.country) : '') + '</span></td>'
             + '<td class="d"><b>' + (m.sH == null ? '–' : m.sH + '-' + m.sA) + '</b></td>'
             + '<td class="d">' + (m.min == null ? '–' : m.min + "'") + '</td>'
-            + '<td class="li">' + (m.hasOdds ? 'sin estadísticas en directo' : 'sin cuota de córners') + '</td></tr>';
+            + '<td class="li">' + (m.hasOdds ? 'sin estadísticas en directo' : 'sin cuota de córners')
+            + enlaces(m) + '</td></tr>';
         });
         h += '</table>';
       }
