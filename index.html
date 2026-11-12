@@ -366,6 +366,11 @@
    estados es, porque uno gasta dinero y el otro no. */
 button.onon { background: var(--good, #1a7f37); color: #fff; border-color: transparent; font-weight: 700 }
 button.onoff { opacity: .75 }
+/* El aviso de cerrar. Tiene que gritar mas que lo demas de la barra:
+   una entrada perdida vuelve otro dia, una ventana de cierre no. */
+.cierra { background: #b3261e; color: #fff; font-weight: 700; padding: 2px 8px;
+          border-radius: 4px; animation: late 1.2s ease-in-out infinite }
+@keyframes late { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
 </style>
 </head>
 <body>
@@ -421,6 +426,12 @@ button.onoff { opacity: .75 }
   var FOCO = null;                    // partido elegido en Velas
   var BANCO = 1000;
   var VELAS = leer('tl.velas2', {});
+  // Lo que Diego tiene puesto de verdad. Por partido:
+  //   { partido: 'A - B', liga: '...', ts: 1699..., puestas: [{n:9, e:20, c:7.2}] }
+  // Vive en el navegador y no sale de aqui: son sus apuestas, no datos.
+  var POS = leer('tl.pos', {});
+  var CIERRE_MIN = 0.05;   // desde que margen avisa
+  var CERRADOS = {};       // para no repetir el aviso del mismo partido
 
   function leer(k, x) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : x; } catch (e) { return x; } }
   function guardar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -1136,6 +1147,72 @@ button.onoff { opacity: .75 }
     } catch (e) {}
   }
 
+  // ---------- cuanto vale cerrar lo que tengo puesto ----------
+  // vale ahora = importe x cuota x probabilidad de ESE numero ahora.
+  // La probabilidad sale de pmfC, el reparto numero a numero del motor.
+  function valorCierre(fid) {
+    var p = POS[fid];
+    if (!p || !p.puestas || !p.puestas.length) return null;
+    var m = null;
+    vivos().forEach(function (x) { if (String(x.id) === String(fid)) m = x; });
+    var puesto = 0, vale = 0, detalle = [];
+    p.puestas.forEach(function (q) {
+      var e = Number(q.e) || 0, c = Number(q.c) || 0, n = Number(q.n);
+      puesto += e;
+      var pr = null;
+      if (m && m.pmfC && n >= 0 && n < m.pmfC.length) {
+        pr = Number(m.pmfC[n]) || 0;
+        // UN NUMERO YA PERDIDO VALE CERO. Si van 9 corners, el 7 no puede
+        // salir. El motor ya reparte desde los que van, pero se fuerza:
+        // un fallo aqui inflaria el valor de cerrar justo cuando duele.
+        var yaVan = (Number(m.cH) || 0) + (Number(m.cA) || 0);
+        if (m.hasStats && n < yaVan) pr = 0;
+      }
+      var v = pr == null ? null : e * c * pr;
+      if (v != null) vale += v;
+      detalle.push({ n: n, e: e, c: c, p: pr, vale: v });
+    });
+    if (!m || !m.pmfC || !puesto) return { fid: fid, puesto: puesto, detalle: detalle, vale: null, margen: null, m: m };
+    // El mordisco de la casa al cerrar. No es su numero: es el tipico.
+    var neto = vale * (1 - 0.04);
+    return { fid: fid, puesto: puesto, detalle: detalle, vale: neto,
+             margen: puesto ? (neto / puesto - 1) : null, m: m };
+  }
+
+  function cierresAbiertos() {
+    return Object.keys(POS).map(valorCierre).filter(function (x) { return x; });
+  }
+
+  // ---------- la alarma de cerrar ----------
+  // Suena cuando el valor estimado de cerrar pasa del umbral. No dice
+  // «cierra»: dice «mira el cash out». bet365 no publica el suyo por API
+  // y nadie puede leerlo, asi que esto es el valor justo del modelo menos
+  // el margen tipico de la casa. Darlo por exacto acabaria en «pues a mi
+  // me puso 112 y la casa me ofrecia 94».
+  function alarmaCierre() {
+    var ahora = Date.now();
+    var listos = cierresAbiertos().filter(function (x) {
+      return x.margen != null && x.margen >= CIERRE_MIN;
+    });
+    Object.keys(CERRADOS).forEach(function (k) {
+      if (ahora - CERRADOS[k] > 6e5) delete CERRADOS[k];    // diez minutos
+    });
+    var nuevos = listos.filter(function (x) { return !CERRADOS[x.fid]; });
+    listos.forEach(function (x) { CERRADOS[x.fid] = ahora; });
+    if (PRIMERA || !nuevos.length) return;
+    if (SONIDO) { pitido(); setTimeout(pitido, 350); }      // dos: no es lo mismo que una entrada
+    try {
+      if (window.Notification && Notification.permission === 'granted') {
+        var x = nuevos[0];
+        new Notification('Mira el cash out: +' + Math.round(x.margen * 100) + '%', {
+          body: (POS[x.fid].partido || '') + ' · pusiste ' + eur(x.puesto)
+            + ', cerrar debería rondar ' + eur(x.vale),
+          tag: 'cierre-' + x.fid,
+        });
+      }
+    } catch (e) {}
+  }
+
   function alarma() {
     var ahora = Date.now();
     var L = oportunidades().filter(function (o) { return o.ev >= EV_MIN; });
@@ -1184,12 +1261,22 @@ button.onoff { opacity: .75 }
       else { cl = 'rojo'; txt = 'dormido'; }
     }
     var val = oportunidades().filter(function (o) { return o.ev >= EV_MIN; }).length;
+    var cie = cierresAbiertos().filter(function (x) {
+      return x.margen != null && x.margen >= CIERRE_MIN;
+    });
     var c = (D && D.cupo) || {};
     var h = '<span class="vive ' + cl + '"><span class="punto"></span>' + txt + '</span>'
       + '<span>datos de hace <b>' + (edad == null ? '-' : edad < 90 ? edad + ' s'
           : Math.round(edad / 60) + ' min') + '</b></span>'
       + '<span>releo en <b>' + falta + ' s</b></span>'
       + '<span>con valor <b>' + val + '</b></span>';
+    // Lo mas urgente de la barra: una entrada que te pierdes vuelve otro
+    // dia; una ventana de cierre no.
+    if (cie.length) {
+      h += '<span class="cierra">CIERRA ' + cie.map(function (x) {
+        return '+' + Math.round(x.margen * 100) + '%';
+      }).join(' · ') + '</span>';
+    }
     // El cupo: con /foto no se consulta (preguntarlo gasta una llamada), asi
     // que viene el ultimo que vimos. Se dice que es eso y no el de ahora.
     if (c.limite_dia) h += '<span>API <b>' + c.quedan_hoy + '</b>/' + c.limite_dia + '</span>';
@@ -1326,7 +1413,164 @@ button.onoff { opacity: .75 }
   }
 
   // ---------- las vistas ----------
+  // ---------- lo que hay que tocar desde los botones del HTML ----------
+  // El script vive dentro de una funcion anonima: un onclick escrito en
+  // el HTML no ve nada de aqui dentro. Se expone lo justo y nada mas.
+  window.tlPos = {
+    anadir: function () {
+      var fid = (document.getElementById('pFid') || {}).value;
+      var ns = String((document.getElementById('pNums') || {}).value || '')
+        .split(/[^0-9]+/).filter(function (s) { return s !== ''; }).map(Number);
+      var e = Number((document.getElementById('pEur') || {}).value);
+      var c = Number((document.getElementById('pCuo') || {}).value);
+      if (!fid || !ns.length || !(e > 0) || !(c > 1)) {
+        alert('Faltan datos: elige partido, escribe los números, el importe de cada uno y la cuota.');
+        return;
+      }
+      var m = null;
+      vivos().forEach(function (x) { if (String(x.id) === String(fid)) m = x; });
+      POS[fid] = {
+        partido: m ? (m.home + ' - ' + m.away) : String(fid),
+        liga: m ? m.league : '', ts: Date.now(),
+        puestas: ns.map(function (n) { return { n: n, e: e, c: c }; }),
+      };
+      guardar('tl.pos', POS);
+      CERRADOS = {};                       // jugada nueva, aviso nuevo
+      render();
+    },
+    quitar: function (fid) {
+      if (!confirm('¿Quitar esta jugada de la lista? No toca nada en la casa de apuestas, sólo deja de vigilarla.')) return;
+      delete POS[fid];
+      guardar('tl.pos', POS);
+      render();
+    },
+  };
+
+  // ---------- la ley, para una jugada concreta ----------
+  // beneficio = (cuota - posiciones) / posiciones
+  // acierto minimo = posiciones / cuota
+  function leyDe(p) {
+    if (!p || !p.puestas || !p.puestas.length) return null;
+    var n = p.puestas.length;
+    var c = p.puestas[0].c;
+    var mismaCuota = p.puestas.every(function (q) { return q.c === c; });
+    if (!mismaCuota || !(c > 0)) return null;
+    return { n: n, c: c, ben: (c - n) / n, pmin: n / c, pierde: c <= n };
+  }
+
   var VISTAS = {
+    posiciones: { t: 'Mis posiciones', n: function () {
+      return Object.keys(POS).length || null;
+    }, pinta: function () {
+      var h = '';
+
+      // --- el formulario ---
+      var vs = vivos().filter(function (m) { return m.analyzed; });
+      h += '<div class="pz"><header>Apunta lo que has puesto</header><div class="cont">';
+      if (!vs.length) {
+        h += '<div class="mut">Ahora mismo no hay ningún partido analizado donde apuntar nada. '
+          + 'Aparecen aquí en cuanto el sistema esté encendido y haya fútbol con cuotas de córners.</div>';
+      } else {
+        h += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">'
+          + '<label style="font-size:12px;color:var(--mut)">Partido<br><select id="pFid" style="padding:5px">'
+          + vs.map(function (m) {
+              return '<option value="' + esc(m.id) + '">' + esc(m.home + ' - ' + m.away) + '</option>';
+            }).join('')
+          + '</select></label>'
+          + '<label style="font-size:12px;color:var(--mut)">Números<br>'
+          + '<input id="pNums" placeholder="7, 8, 9, 10, 11" style="width:150px;padding:5px"></label>'
+          + '<label style="font-size:12px;color:var(--mut)">€ cada uno<br>'
+          + '<input id="pEur" type="number" min="1" step="1" value="20" style="width:85px;padding:5px"></label>'
+          + '<label style="font-size:12px;color:var(--mut)">Cuota<br>'
+          + '<input id="pCuo" type="number" min="1.01" step="0.01" value="7.00" style="width:85px;padding:5px"></label>'
+          + '<button onclick="window.tlPos.anadir()">Apuntar</button>'
+          + '</div>'
+          + '<div class="mut" style="margin-top:6px">Esto no apuesta nada ni toca tu cuenta: '
+          + 'sólo le dice al sistema qué tiene que vigilar para avisarte de cuándo cerrar.</div>';
+      }
+      h += '</div></div>';
+
+      // --- las jugadas abiertas ---
+      var abiertas = cierresAbiertos();
+      if (!abiertas.length) {
+        h += '<div class="vacia"><b>No estás vigilando ninguna jugada.</b><br>'
+          + 'Apunta arriba los números que has puesto y el sistema te avisa, con sonido, '
+          + 'cuando cerrar valga más de un ' + Math.round(CIERRE_MIN * 100) + '% por encima de lo que pusiste.</div>';
+        return h;
+      }
+
+      abiertas.sort(function (a, b) { return (b.margen == null ? -9 : b.margen) - (a.margen == null ? -9 : a.margen); });
+      abiertas.forEach(function (x) {
+        var p = POS[x.fid], ley = leyDe(p), m = x.m;
+        var pTot = x.detalle.reduce(function (a, d) { return a + (d.p == null ? 0 : d.p); }, 0);
+        var dispara = x.margen != null && x.margen >= CIERRE_MIN;
+
+        h += '<div class="pz"' + (dispara ? ' style="border-left:5px solid #b3261e"' : '') + '>'
+          + '<header>' + esc(p.partido) + (p.liga ? ' <span class="mut">· ' + esc(p.liga) + '</span>' : '') + '</header>'
+          + '<div class="cont">';
+
+        // la ley de la jugada
+        if (ley) {
+          h += '<div class="st"><span>' + ley.n + ' números a <b>' + ley.c.toFixed(2) + '</b></span>'
+            + '<span>si acierta ganas <b>' + (ley.pierde ? '—' : '+' + Math.round(ley.ben * 100) + '%') + '</b></span>'
+            + '<span>necesitas acertar <b>' + Math.round(ley.pmin * 100) + '%</b></span>'
+            + '<span>el modelo dice <b style="color:' + (pTot >= ley.pmin ? 'var(--good,#1a7f37)' : '#b3261e') + '">'
+            + Math.round(pTot * 100) + '%</b></span></div>';
+          if (ley.pierde) {
+            h += '<div class="mut" style="color:#b3261e;margin-top:4px"><b>Esta jugada pierde siempre:</b> '
+              + 'con ' + ley.n + ' números a cuota ' + ley.c.toFixed(2) + ' cobras menos de lo que pones, acierte quien acierte.</div>';
+          } else if (pTot < ley.pmin) {
+            h += '<div class="mut" style="margin-top:4px">El modelo da menos de lo que la jugada necesita. '
+              + 'A la larga eso es perder dinero, aunque ésta salga bien.</div>';
+          }
+        }
+
+        // el estado del partido
+        if (m && m.hasStats) {
+          h += '<div class="st" style="margin-top:6px"><span class="mono">' + m.min + "'</span>"
+            + '<span>córners <b>' + ((m.cH || 0) + (m.cA || 0)) + '</b> (' + m.cH + '-' + m.cA + ')</span>'
+            + '<span>previsión <b>' + (m.expC == null ? '—' : m.expC.toFixed(1)) + '</b></span>'
+            + (m.rH + m.rA ? '<span style="color:#b3261e">rojas ' + (m.rH + m.rA) + '</span>' : '')
+            + '</div>';
+        }
+
+        // lo que vale cerrar
+        h += '<div style="margin-top:8px">';
+        if (x.margen == null) {
+          h += '<span class="mut">Todavía no puedo valorar el cierre: falta la estadística en vivo de este partido.</span>';
+        } else {
+          var col = dispara ? '#b3261e' : 'var(--mut)';
+          h += '<div style="font-size:15px"><b style="color:' + col + '">'
+            + (x.margen >= 0 ? '+' : '') + Math.round(x.margen * 100) + '%</b> &nbsp;'
+            + 'pusiste ' + eur(x.puesto) + ' · cerrar debería rondar <b>' + eur(x.vale) + '</b></div>';
+          if (dispara) {
+            h += '<div style="margin-top:4px;color:#b3261e"><b>MIRA EL CASH OUT EN BET365.</b> '
+              + 'Esto es una estimación del modelo menos el mordisco típico de la casa, no el número de bet365: '
+              + 'ellos no lo publican y nadie puede leerlo. El número bueno está en su pantalla.</div>';
+          }
+        }
+        h += '</div>';
+
+        // numero a numero
+        h += '<table style="margin-top:8px"><tr><td class="mut">Número</td><td class="n mut">Puesto</td>'
+          + '<td class="n mut">Cuota</td><td class="n mut">Probabilidad ahora</td><td class="n mut">Vale</td></tr>'
+          + x.detalle.map(function (d) {
+              var muerto = d.p === 0;
+              return '<tr' + (muerto ? ' style="opacity:.45"' : '') + '><td><b>' + d.n + '</b>'
+                + (muerto ? ' <span class="mut">ya no puede salir</span>' : '') + '</td>'
+                + '<td class="n mono">' + eur(d.e) + '</td>'
+                + '<td class="n mono">' + d.c.toFixed(2) + '</td>'
+                + '<td class="n mono">' + (d.p == null ? '—' : Math.round(d.p * 100) + '%') + '</td>'
+                + '<td class="n mono">' + (d.vale == null ? '—' : eur(d.vale)) + '</td></tr>';
+            }).join('')
+          + '</table>';
+
+        h += '<button onclick="window.tlPos.quitar(\'' + esc(x.fid) + '\')" style="margin-top:8px">Dejar de vigilar</button>';
+        h += '</div></div>';
+      });
+      return h;
+    } },
+
     historico: { t: 'Histórico', n: function () {
       return (histo().partidos || []).length;
     }, pinta: function () {
@@ -1831,6 +2075,11 @@ button.onoff { opacity: .75 }
         var firma = JSON.stringify([j.momento, j.updated]);
         D = j; muestrear();
         if (firma !== FIRMA) { FIRMA = firma; alarma(); render(); }
+        // Va fuera del if: el valor de cerrar cambia con cada corner y con
+        // cada minuto, y la firma solo mira si llego una foto nueva. Una
+        // ventana de cierre que se abre y se cierra entre dos repintados
+        // es exactamente la que se pierde.
+        alarmaCierre();
         latido();
       })
       .catch(function (e) {
