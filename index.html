@@ -361,6 +361,11 @@
         padding:4px 7px;border-radius:3px;background:var(--cespedf);color:var(--cesped)}
     .dur.trabado .et{background:var(--avisof);color:var(--aviso)}
     .dur.guerra .et{background:color-mix(in srgb,var(--rojo) 14%,transparent);color:var(--rojo)}
+/* El interruptor del motor. Verde cuando mira, apagado cuando no:
+   tiene que verse desde el otro lado de la habitacion cual de los dos
+   estados es, porque uno gasta dinero y el otro no. */
+button.onon { background: var(--good, #1a7f37); color: #fff; border-color: transparent; font-weight: 700 }
+button.onoff { opacity: .75 }
 </style>
 </head>
 <body>
@@ -1189,10 +1194,20 @@
     // que viene el ultimo que vimos. Se dice que es eso y no el de ahora.
     if (c.limite_dia) h += '<span>API <b>' + c.quedan_hoy + '</b>/' + c.limite_dia + '</span>';
     else if (c.quedan_hoy != null) h += '<span>API <b>' + c.quedan_hoy + '</b> <span class="mut">(último visto)</span></span>';
+    // El interruptor. Lo primero de la barra a proposito: es el que
+    // decide si lo demas significa algo. Con el motor parado, los datos
+    // que hay en pantalla son los ultimos que se miraron y nada mas.
+    h += '<span class="sep"></span>'
+      + '<button id="mot" aria-pressed="' + MOTOR + '" class="' + (MOTOR ? 'onon' : 'onoff') + '">'
+      + (MOTOR ? '● ENCENDIDO · mirando' : '○ PARADO · tócame para encender') + '</button>';
+    if (MOTOR && PULSOOK === false) {
+      h += '<span class="mut">no llego al servidor</span>';
+    }
     h += '<span class="sep"></span>'
       + '<button id="snd" aria-pressed="' + SONIDO + '">'
       + (SONIDO ? 'alarma armada' : 'EL SONIDO ESTA APAGADO · tocame') + '</button>';
     n.innerHTML = h;
+    document.getElementById('mot').onclick = function () { motor(!MOTOR); };
     document.getElementById('snd').onclick = function () {
       SONIDO = !SONIDO;
       guardar('tl.sonido', SONIDO);
@@ -1762,12 +1777,46 @@
   // noviembre tocaban mas de cien pasadas programadas y salio UNA, a las
   // 00:18. Se queda como respaldo, que para eso si vale.
   var FOTO = 'https://tiros-libre.alpendre.workers.dev/foto';
+
+  // ---------- el motor: mirar solo mientras estes delante ----------
+  // El worker ya no escanea por su cuenta. Espera un latido, y si no le
+  // llega en 150 segundos se duerme. Esto es lo que lo manda.
+  //
+  // Arranca PARADO siempre que no se haya encendido antes a mano: algo
+  // que gasta dinero no se enciende solo.
+  var DESPIERTO = 'https://tiros-libre.alpendre.workers.dev/despierto';
+  var MOTOR = leer('tl.motor', false);
+  var PROXPULSO = 0;
+  var PULSOOK = null;   // null = aun no se ha intentado
+
+  // Se llama pulso() y no latido() porque latido() ya existe en esta
+  // pagina y es otra cosa (la barra de arriba). Dos funciones con el
+  // mismo nombre y una desaparece sin avisar.
+  function pulso() {
+    PROXPULSO = Date.now() + 60000;
+    return fetch(DESPIERTO + '?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { PULSOOK = !!(j && j.ok); })
+      .catch(function () { PULSOOK = false; })
+      .then(function () { latido(); });
+  }
+
+  function motor(v) {
+    MOTOR = !!v;
+    guardar('tl.motor', MOTOR);
+    PULSOOK = null;
+    if (MOTOR) { pulso(); cargar(); }
+    latido();
+  }
   function cargar() {
     // 10 s. /foto se cachea 5 s en el borde de Cloudflare, asi que pedirla
     // a este ritmo casi nunca ejecuta el worker. Que la pagina vaya a 10 s
     // no significa que el dato sea de hace 10 s: con el plan gratis el
     // worker mira cada 45 minutos.
-    PROX = Date.now() + 10000;
+    // Parado no hay nada nuevo que leer: de 10 s a 60 s. Leer /foto no
+    // gasta cupo de futbol, pero tampoco tiene sentido pedir sesenta
+    // veces por minuto algo que ya no cambia.
+    PROX = Date.now() + (MOTOR ? 10000 : 60000);
     return fetch(FOTO + '?t=' + Date.now())
       .then(function (r) {
         if (!r.ok) throw new Error('http ' + r.status);
@@ -1792,6 +1841,9 @@
 
   function tic() {
     latido();
+    // El pulso va antes que la lectura: si el worker esta dormido, lo
+    // primero que hay que hacer es despertarlo, no leer lo que dejo.
+    if (MOTOR && Date.now() >= PROXPULSO) pulso();
     if (Date.now() >= PROX) cargar();
   }
 
