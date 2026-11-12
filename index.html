@@ -2368,7 +2368,31 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);
 
   function render() {
     if (!D) return;
+    // DONDE ESTABA LA FILA DE PESTANAS. pestanas() rehace su HTML, y al
+    // rehacerlo el navegador la devuelve al principio. Con el motor
+    // encendido eso pasa cada pocos segundos, y las pestanas de la derecha
+    // —«Partidos ahora», «Los que vienen», «Velas», «Sistema»— se vuelven
+    // imposibles de tocar: las deslizas y se van solas antes de que llegue
+    // el dedo. No da ningun error; parece culpa tuya.
+    var fila = document.getElementById('pestanas');
+    var donde = fila ? fila.scrollLeft : 0;
     pestanas();
+    if (fila) {
+      fila.scrollLeft = donde;
+      // Y la elegida, a la vista: es lo que uno espera al cambiar de
+      // pestana. Sin animacion: una fila que se desliza sola cada tres
+      // segundos marea mas que el salto.
+      try {
+        var sel = fila.querySelector('[aria-selected="true"]');
+        if (sel) {
+          var i = sel.offsetLeft, f = i + sel.offsetWidth;
+          if (i < fila.scrollLeft) fila.scrollLeft = i - 8;
+          else if (f > fila.scrollLeft + fila.clientWidth) {
+            fila.scrollLeft = f - fila.clientWidth + 8;
+          }
+        }
+      } catch (e) {}
+    }
     // Si los datos duermen, las pestañas que viven del momento no pintan
     // partidos viejos como si estuvieran jugandose.
     document.getElementById('vista').innerHTML =
