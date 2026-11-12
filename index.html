@@ -368,9 +368,67 @@ button.onon { background: var(--good, #1a7f37); color: #fff; border-color: trans
 button.onoff { opacity: .75 }
 /* El aviso de cerrar. Tiene que gritar mas que lo demas de la barra:
    una entrada perdida vuelve otro dia, una ventana de cierre no. */
+/* Ya no parpadea. Parpadear era lo mas Las Vegas de la pagina y no
+   anadia nada: lo que avisa es el sonido, y el cartel solo tiene que
+   poder encontrarse de un vistazo. */
 .cierra { background: #b3261e; color: #fff; font-weight: 700; padding: 2px 8px;
-          border-radius: 4px; animation: late 1.2s ease-in-out infinite }
-@keyframes late { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
+          border-radius: 4px; letter-spacing: .02em }
+/* ---- los escudos y el ritmo ---- */
+/* La cinta sale a sangre: la caja tiene 15px de aire y hay que comerselo
+   para que el color llegue a los dos bordes. */
+.cinta{height:4px;margin:-15px -15px 12px;border-radius:11px 11px 0 0}
+.eq img.esc{vertical-align:-4px;margin-right:6px;object-fit:contain}
+.eq .vs{color:var(--tenue);font-weight:400;margin:0 8px 0 4px}
+/* El ritmo va separado de la fila de datos con una linea de puntos: es
+   una cuenta distinta, no un dato mas del partido. */
+.ritmo{display:flex;gap:15px;flex-wrap:wrap;align-items:baseline;
+       margin-top:10px;padding-top:9px;border-top:1px dashed var(--raya);
+       font-family:var(--dato);font-size:.78rem;color:var(--tenue)}
+.ritmo b{color:var(--tinta);font-size:.98rem}
+.ritmo em{font-style:normal;color:var(--aviso);font-size:.74rem;
+          flex-basis:100%;line-height:1.4}
+/* ---- la cinta de lo que acaba de pasar ---- */
+/* Una fila que se desplaza a lo ancho, pegada debajo de las pestanas.
+   Tono bajo a proposito: tiene que verse el movimiento, no gritar. */
+.viva{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;
+      padding:8px 0 9px;border-bottom:1px solid var(--raya);
+      font-family:var(--dato);font-size:.74rem;min-height:38px;
+      align-items:center}
+.viva::-webkit-scrollbar{display:none}
+.vmudo{color:var(--tenue);font-size:.76rem;padding-left:2px}
+.vp{flex:none;display:flex;flex-direction:column;line-height:1.25;
+    padding:4px 9px;border-radius:5px;background:var(--tabla);
+    border:1px solid var(--raya);border-left-width:3px;max-width:15rem}
+.vp b{font-size:.8rem}
+.vp i{font-style:normal;color:var(--tenue);font-size:.68rem;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v-corner{border-left-color:var(--frio)}
+.v-gol{border-left-color:var(--cesped)}
+.v-roja{border-left-color:var(--rojo)}
+/* Los partidos que tiene apuntados, o con valor, resaltados: son los que
+   suenan, asi que tienen que ser los que se encuentran primero. */
+.vp.mio{background:var(--cespedf);border-color:var(--cesped)}
+/* Pasados siete minutos deja de ser «lo que acaba de pasar». Se apaga en
+   vez de desaparecer: que se vea que hubo algo y ya pasó. */
+.vp.viejo{opacity:.45}
+/* ---- las botoneras del filtro ---- */
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;
+       margin:13px 0 14px;padding-bottom:13px;
+       border-bottom:1px solid var(--raya)}
+.chips .ct{font-family:var(--display);text-transform:uppercase;
+           letter-spacing:.07em;font-size:.72rem;color:var(--tenue);
+           margin-right:1px}
+.chips .ct:not(:first-child){margin-left:11px}
+.chips .cn{margin-left:auto;font-family:var(--dato);font-size:.74rem;
+           color:var(--tenue)}
+button.chip{background:var(--tabla);border:1px solid var(--raya);
+            border-radius:999px;padding:4px 12px;cursor:pointer;
+            font-size:.8rem;line-height:1.3}
+button.chip:hover{border-color:var(--tenue)}
+/* El elegido, en verde cesped relleno: tiene que verse de un vistazo cual
+   de los dos manda, porque de eso depende lo que falta en la pantalla. */
+button.chip.on{background:var(--cesped);border-color:var(--cesped);
+               color:var(--tabla);font-weight:600}
 </style>
 </head>
 <body>
@@ -383,6 +441,9 @@ button.onoff { opacity: .75 }
 
   <div class="latido" id="latido"></div>
   <nav class="pestanas" id="pestanas" role="tablist"></nav>
+  <!-- Lo que acaba de pasar. Va fuera de las pestanas a proposito: el
+       futbol sigue pasando mientras miras el historico. -->
+  <div class="viva" id="paso" aria-live="polite"></div>
 
   <div id="vista"><p class="vacia">Leyendo…</p></div>
 
@@ -432,6 +493,9 @@ button.onoff { opacity: .75 }
   var POS = leer('tl.pos', {});
   var CIERRE_MIN = 0.05;   // desde que margen avisa
   var CERRADOS = {};       // para no repetir el aviso del mismo partido
+  // Que partidos quiero ver. Se guarda: si filtro a mis ligas y recargo,
+  // sigue filtrado.
+  var FILT = leer('tl.filtro', { ligas: 'mias', gen: '' });
 
   function leer(k, x) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : x; } catch (e) { return x; } }
   function guardar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -459,8 +523,174 @@ button.onoff { opacity: .75 }
   }
 
   function vivos() { return (D && D.matches) || []; }
+
+  // ---------- los escudos, y el color que sale de ellos ----------
+  // El color NO esta escrito a mano. Una tabla de colores obligaria a
+  // inventarse el del Pharco y el del Al Nasr, que es casi todo lo que
+  // trae /fixtures?live=all. Sale del escudo de verdad:
+  //
+  //     https://media.api-sports.io/football/teams/<id>.png
+  //
+  // que se sirve con access-control-allow-origin: *, asi que el navegador
+  // puede leer sus pixeles en un canvas sin que quede manchado.
+  var ESCCOL = leer('tl.escudocolor', {});   // id -> '#rrggbb' o '' si no hay
+  var ESCPIDE = {};                          // los que se estan midiendo ahora
+  var REPINTA = 0;
+
+  function escudoUrl(id) {
+    return 'https://media.api-sports.io/football/teams/' + id + '.png';
+  }
+
+  function hex2(n) { var s = n.toString(16); return s.length < 2 ? '0' + s : s; }
+
+  // El color dominante del escudo, descartando lo que no identifica a
+  // nadie: lo transparente, el blanco y el negro del fondo y de los
+  // bordes, y los grises. Un escudo medio blanco no es un equipo blanco.
+  function colorEscudo(id) {
+    if (!id || ESCCOL[id] !== undefined || ESCPIDE[id]) return;
+    ESCPIDE[id] = 1;
+    var im = new Image();
+    im.crossOrigin = 'anonymous';   // sin esto el canvas queda manchado
+    im.onload = function () {
+      var col = '';
+      try {
+        var L = 28, cv = document.createElement('canvas');
+        cv.width = L; cv.height = L;
+        var cx = cv.getContext('2d');
+        cx.drawImage(im, 0, 0, L, L);
+        var px = cx.getImageData(0, 0, L, L).data, cubo = {}, mejor = null, k;
+        for (var i = 0; i < px.length; i += 4) {
+          var r = px[i], g = px[i + 1], b = px[i + 2];
+          if (px[i + 3] < 200) continue;                 // transparente
+          var mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+          if (mx - mn < 40) continue;                    // gris, blanco o negro
+          if (mx < 45 || mn > 215) continue;             // casi negro, casi blanco
+          // Cubos anchos a proposito: si no, el rojo del Arsenal se parte
+          // en tres rojos distintos y ninguno gana.
+          k = (r >> 5) + ',' + (g >> 5) + ',' + (b >> 5);
+          var c = cubo[k] || (cubo[k] = { n: 0, r: 0, g: 0, b: 0 });
+          c.n++; c.r += r; c.g += g; c.b += b;
+        }
+        for (k in cubo) if (!mejor || cubo[k].n > mejor.n) mejor = cubo[k];
+        // Con menos de ocho pixeles no es el color del escudo: es un borde.
+        if (mejor && mejor.n >= 8) {
+          col = '#' + hex2(Math.round(mejor.r / mejor.n))
+                    + hex2(Math.round(mejor.g / mejor.n))
+                    + hex2(Math.round(mejor.b / mejor.n));
+        }
+      } catch (e) { col = ''; }     // canvas manchado: se queda sin color
+      ESCCOL[id] = col;
+      guardar('tl.escudocolor', ESCCOL);
+      // El color llega DESPUES del repintado, asi que hay que volver a
+      // pintar. Agrupado: veinte escudos no son veinte repintados.
+      clearTimeout(REPINTA);
+      REPINTA = setTimeout(function () { try { render(); } catch (e) {} }, 180);
+    };
+    im.onerror = function () {
+      ESCCOL[id] = '';
+      guardar('tl.escudocolor', ESCCOL);
+    };
+    im.src = escudoUrl(id);
+  }
+
+  function escudoImg(id) {
+    if (!id) return '';
+    colorEscudo(id);
+    // alt vacio: el nombre del equipo va justo al lado y leerlo dos veces
+    // solo molesta a quien usa lector de pantalla.
+    return '<img class="esc" src="' + escudoUrl(id) + '" alt=""'
+      + ' loading="lazy" width="22" height="22">';
+  }
+
+  // ---------- el ritmo, que es como cuenta Diego ----------
+  // Con sus palabras: «4 corners en 24 minutos, esto dividido los minutos
+  // por los 95 minutos totales de juego, es el numero». 4/24 x 95 = 16.
+  //
+  // Se ensena al lado de lo que dice el modelo porque cuando los dos
+  // numeros no coinciden eso ES el dato: el ritmo de los primeros veinte
+  // minutos casi nunca aguanta noventa.
+  //
+  // Antes del minuto 15, nada. Un corner en el minuto 3 proyecta 31, y eso
+  // no es una prevision: es un accidente de la division.
+  function ritmoHTML(m) {
+    if (!m.hasStats || m.min == null || m.min < 15) return '';
+    var van = (m.cH || 0) + (m.cA || 0);
+    var porMin = van / m.min, proy = porMin * 95;
+    var mod = m.expC == null ? null : Number(m.expC);
+    return '<div class="ritmo">'
+      + '<span>ritmo <b>' + porMin.toFixed(2) + '</b> /min</span>'
+      + '<span>a este paso <b>' + Math.round(proy) + '</b></span>'
+      + (mod != null ? '<span>el modelo <b>' + mod.toFixed(1) + '</b></span>' : '')
+      + (mod != null && Math.abs(proy - mod) >= 3
+          ? '<em>No coinciden. El ritmo de ahora casi nunca aguanta los 95 minutos,'
+            + ' y el modelo ya cuenta con que se frene.</em>'
+          : '')
+      + '</div>';
+  }
+  // ---------- el filtro: que partidos quiero ver ----------
+  // Que se ANALIZA lo decide FOLLOW_LEAGUES en el worker, porque analizar
+  // cuesta llamadas. Esto decide que se VE, y no cuesta nada: la foto ya
+  // trae todos los partidos del mundo en vivo.
+  //
+  // La lista de «mis ligas» viene en la foto (campo sigo), que es la misma
+  // que usa el motor. Escribirla aparte en la pagina seria tener dos
+  // verdades y descubrirlo el dia que no coincidan.
+  function misLigas() { return (D && D.sigo) || []; }
+
+  function pasaFiltro(m) {
+    // UN PARTIDO CON DINERO PUESTO NO SE ESCONDE NUNCA. Filtre lo que
+    // filtre: tapar de la vista el partido donde hay cien euros es lo peor
+    // que puede hacer un filtro.
+    if (POS && POS[m.id]) return true;
+    if (FILT.gen && m.gender && m.gender !== FILT.gen) return false;
+    if (FILT.ligas === 'mias') {
+      var L = misLigas();
+      // Si la foto no trae la lista, no se filtra. Mejor ensenar todo que
+      // dejar la pantalla en blanco sin que se sepa por que.
+      if (L.length && L.indexOf(m.leagueId) < 0) return false;
+    }
+    return true;
+  }
+  function filtra(ms) { return ms.filter(pasaFiltro); }
+
+  function chipsHTML() {
+    var L = misLigas(), tot = vivos().length, ven = filtra(vivos()).length;
+    var c = function (g, v, et, act) {
+      return '<button class="chip' + (act ? ' on' : '') + '" data-f="' + g
+        + '" data-v="' + esc(v) + '" aria-pressed="' + (act ? 'true' : 'false')
+        + '">' + et + '</button>';
+    };
+    return '<div class="chips">'
+      + '<span class="ct">Ligas</span>'
+      + c('ligas', 'mias', 'Las mías' + (L.length ? ' · ' + L.length : ''), FILT.ligas === 'mias')
+      + c('ligas', 'todas', 'Todas', FILT.ligas === 'todas')
+      + '<span class="ct">Género</span>'
+      + c('gen', '', 'Los dos', !FILT.gen)
+      + c('gen', 'Masculino', 'Masculino', FILT.gen === 'Masculino')
+      + c('gen', 'Femenino', 'Femenino', FILT.gen === 'Femenino')
+      + '<span class="cn">' + ven + ' de ' + tot + '</span>'
+      + '</div>';
+  }
+
+  // Un solo oyente para toda la pagina: render() rehace el HTML entero, y
+  // un onclick puesto en cada boton se perderia en el primer repintado.
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('button.chip') : null;
+    if (!b) return;
+    FILT[b.getAttribute('data-f')] = b.getAttribute('data-v') || '';
+    guardar('tl.filtro', FILT);
+    try { render(); } catch (err) {}
+  });
+
   function analizados() {
-    return vivos().filter(function (m) { return m.analyzed; })
+    // EL FILTRO ENTRA AQUI, y eso es a proposito: analizados() es de donde
+    // sale la lista de oportunidades y por tanto la alarma de entrada. Si
+    // filtro a mis ligas y luego pita la segunda egipcia, el filtro no
+    // sirve para nada.
+    //
+    // La alarma de CERRAR no pasa por aqui: va por POS y vivos() sin
+    // filtrar, porque ese dinero ya esta puesto y se vigila siempre.
+    return filtra(vivos()).filter(function (m) { return m.analyzed; })
       .sort(function (a, b) { return ((b.best && b.best.ev) || -9) - ((a.best && a.best.ev) || -9); });
   }
   function conValor() { return analizados().filter(function (m) { return m.best && m.best.ev >= EV_MIN; }); }
@@ -549,13 +779,25 @@ button.onoff { opacity: .75 }
 
   // ---------- piezas ----------
   function cabecera(m) {
-    return '<div class="eq">' + esc(m.home) + ' – ' + esc(m.away) + '</div>'
-      + '<div class="li">' + esc(m.league) + (m.country ? ' · ' + esc(m.country) : '') + '</div>'
+    // La cinta de arriba: el color del escudo de casa a la izquierda, el
+    // de fuera a la derecha. Si de un equipo no se pudo sacar color, ese
+    // lado se queda con la raya de siempre; no se inventa uno.
+    var cl = ESCCOL[m.hId] || '', cv = ESCCOL[m.aId] || '';
+    var cinta = (cl || cv)
+      ? '<div class="cinta" style="background:linear-gradient(90deg,'
+        + (cl || 'var(--raya)') + ' 0 50%,' + (cv || 'var(--raya)') + ' 50% 100%)"></div>'
+      : '';
+    return cinta
+      + '<div class="eq">' + escudoImg(m.hId) + esc(m.home)
+      + '<span class="vs">–</span>' + escudoImg(m.aId) + esc(m.away) + '</div>'
+      + '<div class="li">' + esc(m.league) + (m.country ? ' · ' + esc(m.country) : '')
+      + (m.gender ? ' · ' + esc(m.gender) : '') + '</div>'
       + '<div class="rl"><span>minuto <b>' + (m.min == null ? '–' : m.min) + "'</b></span>"
       + '<span>va <b>' + (m.sH == null ? '–' : m.sH + '-' + m.sA) + '</b></span>'
       + (m.hasStats ? '<span>córners <b>' + m.cH + '-' + m.cA + '</b></span>' : '')
       + (m.rH + m.rA ? '<span>rojas <b>' + m.rH + '-' + m.rA + '</b></span>' : '')
-      + '</div>';
+      + '</div>'
+      + ritmoHTML(m);
   }
 
   // La dureza del partido, medida y no intuida: faltas y amarillas por 90
@@ -1128,6 +1370,35 @@ button.onoff { opacity: .75 }
     return h + '</div>';
   }
 
+  // Una nota suelta. pitido() son tres notas a 0,22 de volumen, que es
+  // la alarma; esto es para avisar de algo que pasa, no para levantarte
+  // de la silla.
+  function nota(hz, vol, dur, retraso) {
+    try {
+      var A = window.AudioContext || window.webkitAudioContext;
+      if (!A) return;
+      if (!AC) AC = new A();
+      if (AC.state === 'suspended') AC.resume();
+      var o = AC.createOscillator(), g = AC.createGain();
+      var t0 = AC.currentTime + (retraso || 0);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(hz, t0);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(vol, t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(AC.destination);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    } catch (e) {}
+  }
+
+  // Tres sonidos distintos para no tener que mirar la pantalla.
+  function suenaPaso(k) {
+    if (!SONIDO) return;
+    if (k === 'gol') { nota(587, 0.14, 0.18, 0); nota(880, 0.14, 0.26, 0.15); }
+    else if (k === 'roja') { nota(196, 0.13, 0.34, 0); }
+    else { nota(1175, 0.07, 0.11, 0); }
+  }
+
   function pitido() {
     try {
       var A = window.AudioContext || window.webkitAudioContext;
@@ -1212,6 +1483,103 @@ button.onoff { opacity: .75 }
       }
     } catch (e) {}
   }
+
+  // ---------- lo que acaba de pasar ----------
+  // Comparar cada foto con la anterior. El dato ya venia; solo se miraba
+  // para pintar el numero de ahora, nunca para ver que habia cambiado.
+  // Cuesta cero llamadas nuevas a la API.
+  var ANTES = {};           // id -> lo que traia la foto anterior
+  var PASO = [];            // lo ultimo que ocurrio, lo mas nuevo primero
+  var PASOPRIMERA = true;   // la primera foto no es «lo que acaba de pasar»
+
+  function novedades() {
+    var ahora = Date.now(), nuevos = [];
+    // Los partidos que le importan: los que tiene apuntados y los que el
+    // motor marca con valor. Son los unicos que suenan.
+    var mios = {};
+    Object.keys(POS || {}).forEach(function (k) { mios[k] = 1; });
+
+    vivos().forEach(function (m) {
+      var ant = ANTES[m.id];
+      var hoy = {
+        sH: m.sH || 0, sA: m.sA || 0,
+        // null cuando la foto no traia estadistica. Sin esto, un partido
+        // que pasa de «sin analizar» a «analizado» anunciaria siete
+        // corners de golpe, y no ha caido ninguno.
+        cH: m.hasStats ? (m.cH || 0) : null,
+        cA: m.hasStats ? (m.cA || 0) : null,
+        rH: m.rH || 0, rA: m.rA || 0, min: m.min || 0,
+      };
+      ANTES[m.id] = hoy;
+      if (!ant) return;     // partido nuevo en la foto: no es una novedad
+      var par = m.home + ' – ' + m.away;
+      var vale = !!(m.best && m.best.ev >= EV_MIN) || !!mios[m.id];
+
+      if (hoy.sH + hoy.sA > ant.sH + ant.sA) {
+        nuevos.push({ t: ahora, k: 'gol', fid: m.id, min: hoy.min, par: par,
+                      q: 'GOL ' + hoy.sH + '-' + hoy.sA, vale: vale });
+      }
+      // Solo si LAS DOS fotos traian el dato, y solo si ha subido: la API
+      // corrige hacia abajo de vez en cuando y un «van 7» despues de un
+      // «van 8» no es un corner.
+      if (ant.cH != null && hoy.cH != null && (hoy.cH + hoy.cA) > (ant.cH + ant.cA)) {
+        nuevos.push({ t: ahora, k: 'corner', fid: m.id, min: hoy.min, par: par,
+                      q: 'córner, van ' + (hoy.cH + hoy.cA), vale: vale });
+      }
+      if (hoy.rH + hoy.rA > ant.rH + ant.rA) {
+        nuevos.push({ t: ahora, k: 'roja', fid: m.id, min: hoy.min, par: par,
+                      q: 'roja', vale: vale });
+      }
+    });
+
+    if (PASOPRIMERA) { PASOPRIMERA = false; pintaPaso(); return; }
+    if (nuevos.length) {
+      PASO = nuevos.concat(PASO).slice(0, 16);
+      // UN solo sonido por foto, y solo de lo que le importa. Un sabado
+      // hay sesenta partidos en vivo: sonar con todos seria un pitido
+      // cada pocos segundos y el sonido se apagaria para siempre.
+      var suena = nuevos.filter(function (x) { return x.vale; });
+      if (suena.length) {
+        // Lo mas gordo manda: un gol tapa a un corner.
+        var ord = { gol: 3, roja: 2, corner: 1 };
+        suena.sort(function (a, b) { return ord[b.k] - ord[a.k]; });
+        suenaPaso(suena[0].k);
+      }
+    }
+    pintaPaso();
+  }
+
+  function pintaPaso() {
+    var n = document.getElementById('paso');
+    if (!n) return;
+    if (!MOTOR) {
+      n.innerHTML = '<span class="vmudo">Parado. Enciende el motor y aquí'
+        + ' aparecerá lo que vaya pasando.</span>';
+      return;
+    }
+    if (!PASO.length) {
+      n.innerHTML = '<span class="vmudo">Mirando. Todavía no ha cambiado nada'
+        + ' desde que encendiste.</span>';
+      return;
+    }
+    var ahora = Date.now();
+    n.innerHTML = PASO.map(function (x) {
+      var seg = Math.round((ahora - x.t) / 1000);
+      var hace = seg < 60 ? 'hace ' + seg + ' s'
+               : seg < 3600 ? 'hace ' + Math.round(seg / 60) + ' min'
+               : 'hace rato';
+      // La palabra Y el color, nunca el color solo: en blanco y negro, o
+      // sin distinguir rojo y verde, tiene que leerse igual.
+      return '<span class="vp v-' + x.k + (seg > 420 ? ' viejo' : '')
+        + (x.vale ? ' mio' : '') + '">'
+        + '<b>' + x.min + "'</b> " + esc(x.q)
+        + '<i>' + esc(x.par) + ' · ' + hace + '</i></span>';
+    }).join('');
+  }
+
+  // Las horas de la cinta envejecen solas. Sin esto, «hace 5 s» se queda
+  // puesto media hora y la pantalla vuelve a mentir.
+  setInterval(function () { try { pintaPaso(); } catch (e) {} }, 20000);
 
   function alarma() {
     var ahora = Date.now();
@@ -1838,11 +2206,21 @@ button.onoff { opacity: .75 }
       return h;
     }},
 
-    ahora: { t: 'Partidos ahora', n: function () { return vivos().length; }, pinta: function () {
-      var ms = vivos();
-      if (!ms.length) return '<div class="vacia"><b>No hay ningún partido en juego.</b></div>';
+    ahora: { t: 'Partidos ahora', n: function () { return filtra(vivos()).length; }, pinta: function () {
+      var ms = filtra(vivos());
+      // Si el filtro lo tapa todo hay que DECIRLO. «No hay ningun partido
+      // en juego» cuando hay doce y el filtro los esconde es una mentira,
+      // y de las caras: se cerraria la pagina pensando que no hay futbol.
+      if (!ms.length) {
+        return chipsHTML() + '<div class="vacia"><b>'
+          + (vivos().length
+              ? 'El filtro no deja pasar ninguno de los ' + vivos().length
+                + ' partidos que hay en juego.'
+              : 'No hay ningún partido en juego.')
+          + '</b></div>';
+      }
       var an = analizados(), resto = ms.filter(function (m) { return !m.analyzed; });
-      var h = '';
+      var h = chipsHTML();
       if (an.length) {
         h += '<h2>Analizados</h2>';
         an.forEach(function (m) {
@@ -2054,6 +2432,7 @@ button.onoff { opacity: .75 }
     PULSOOK = null;
     if (MOTOR) { pulso(); cargar(); }
     latido();
+    try { pintaPaso(); } catch (e) {}
   }
   function cargar() {
     // 10 s. /foto se cachea 5 s en el borde de Cloudflare, asi que pedirla
@@ -2077,6 +2456,9 @@ button.onoff { opacity: .75 }
       .then(function (j) {
         var firma = JSON.stringify([j.momento, j.updated]);
         D = j; muestrear();
+        // Antes de repintar: la cinta compara esta foto con la anterior, y
+        // si se hiciera despues ya se habria perdido la de antes.
+        try { novedades(); } catch (e) {}
         if (firma !== FIRMA) { FIRMA = firma; alarma(); render(); }
         // Va fuera del if: el valor de cerrar cambia con cada corner y con
         // cada minuto, y la firma solo mira si llego una foto nueva. Una
