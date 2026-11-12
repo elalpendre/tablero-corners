@@ -1502,7 +1502,10 @@ button.onoff { opacity: .75 }
       abiertas.sort(function (a, b) { return (b.margen == null ? -9 : b.margen) - (a.margen == null ? -9 : a.margen); });
       abiertas.forEach(function (x) {
         var p = POS[x.fid], ley = leyDe(p), m = x.m;
-        var pTot = x.detalle.reduce(function (a, d) { return a + (d.p == null ? 0 : d.p); }, 0);
+        var faltan = x.detalle.some(function (d) { return d.p == null; });
+        // null, no 0: si falta algun numero no se sabe, y decir «0%» seria
+        // afirmar algo que nadie ha calculado.
+        var pTot = faltan ? null : x.detalle.reduce(function (a, d) { return a + d.p; }, 0);
         var dispara = x.margen != null && x.margen >= CIERRE_MIN;
 
         h += '<div class="pz"' + (dispara ? ' style="border-left:5px solid #b3261e"' : '') + '>'
@@ -1514,12 +1517,12 @@ button.onoff { opacity: .75 }
           h += '<div class="st"><span>' + ley.n + ' números a <b>' + ley.c.toFixed(2) + '</b></span>'
             + '<span>si acierta ganas <b>' + (ley.pierde ? '—' : '+' + Math.round(ley.ben * 100) + '%') + '</b></span>'
             + '<span>necesitas acertar <b>' + Math.round(ley.pmin * 100) + '%</b></span>'
-            + '<span>el modelo dice <b style="color:' + (pTot >= ley.pmin ? 'var(--good,#1a7f37)' : '#b3261e') + '">'
-            + Math.round(pTot * 100) + '%</b></span></div>';
+            + '<span>el modelo dice <b style="color:' + (pTot == null ? 'var(--mut)' : pTot >= ley.pmin ? 'var(--good,#1a7f37)' : '#b3261e') + '">'
+            + (pTot == null ? 'todavía nada' : Math.round(pTot * 100) + '%') + '</b></span></div>';
           if (ley.pierde) {
             h += '<div class="mut" style="color:#b3261e;margin-top:4px"><b>Esta jugada pierde siempre:</b> '
               + 'con ' + ley.n + ' números a cuota ' + ley.c.toFixed(2) + ' cobras menos de lo que pones, acierte quien acierte.</div>';
-          } else if (pTot < ley.pmin) {
+          } else if (pTot != null && pTot < ley.pmin) {
             h += '<div class="mut" style="margin-top:4px">El modelo da menos de lo que la jugada necesita. '
               + 'A la larga eso es perder dinero, aunque ésta salga bien.</div>';
           }
