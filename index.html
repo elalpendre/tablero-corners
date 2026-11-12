@@ -429,6 +429,16 @@ button.chip:hover{border-color:var(--tenue)}
    de los dos manda, porque de eso depende lo que falta en la pantalla. */
 button.chip.on{background:var(--cesped);border-color:var(--cesped);
                color:var(--tabla);font-weight:600}
+/* El par de equipos dentro de una tabla: igual que en la ficha, pero
+   cabiendo en una celda. */
+.par2{display:inline-flex;align-items:center;flex-wrap:wrap;font-weight:600}
+.par2 img.esc{vertical-align:-4px;margin-right:5px;object-fit:contain}
+.par2 .vs{color:var(--tenue);font-weight:400;margin:0 7px 0 3px}
+/* La hora de la cinta, a la derecha de su linea y sin que nada la corte:
+   antes iba pegada al nombre del partido y salia como «hace...». */
+.vp .l1{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.vp u{text-decoration:none;color:var(--tenue);font-size:.66rem;margin-left:auto}
+.vp{max-width:17rem}
 </style>
 </head>
 <body>
@@ -1572,8 +1582,9 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);
       // sin distinguir rojo y verde, tiene que leerse igual.
       return '<span class="vp v-' + x.k + (seg > 420 ? ' viejo' : '')
         + (x.vale ? ' mio' : '') + '">'
-        + '<b>' + x.min + "'</b> " + esc(x.q)
-        + '<i>' + esc(x.par) + ' · ' + hace + '</i></span>';
+        + '<span class="l1"><b>' + x.min + "'</b> " + esc(x.q)
+        + '<u>' + hace + '</u></span>'
+        + '<i>' + esc(x.par) + '</i></span>';
     }).join('');
   }
 
@@ -2231,11 +2242,20 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);
         });
       }
       if (resto.length) {
+        // ESCUDOS Y MARCADOR TAMBIEN AQUI. Esta es la tabla donde caen los
+        // partidos que la casa todavia no cotiza, y una noche de
+        // selecciones son TODOS: Italia-Francia, Chequia-Espana,
+        // Inglaterra-Croacia. Dejarla en gris y sin marcador era esconder
+        // justo los partidos que importan detras de una columna que solo
+        // sabe decir por que no se analizan.
         h += '<h2>Sin analizar, ' + resto.length + '</h2><table><tr><th>Partido</th>'
-          + '<th>Min</th><th>Por qué no</th></tr>';
+          + '<th>Va</th><th>Min</th><th>Por qué no</th></tr>';
         resto.forEach(function (m) {
-          h += '<tr><td>' + esc(m.home) + ' – ' + esc(m.away)
-            + '<br><span class="li">' + esc(m.league) + '</span></td>'
+          h += '<tr><td><span class="par2">' + escudoImg(m.hId) + esc(m.home)
+            + '<span class="vs">–</span>' + escudoImg(m.aId) + esc(m.away) + '</span>'
+            + '<br><span class="li">' + esc(m.league)
+            + (m.country ? ' · ' + esc(m.country) : '') + '</span></td>'
+            + '<td class="d"><b>' + (m.sH == null ? '–' : m.sH + '-' + m.sA) + '</b></td>'
             + '<td class="d">' + (m.min == null ? '–' : m.min + "'") + '</td>'
             + '<td class="li">' + (m.hasOdds ? 'sin estadísticas en directo' : 'sin cuota de córners') + '</td></tr>';
         });
