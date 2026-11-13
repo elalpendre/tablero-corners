@@ -1061,6 +1061,18 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
   function ritmoHTML(m) {
     if (!m.hasStats || m.min == null || m.min < 15) return '';
     var van = (m.cH || 0) + (m.cA || 0);
+    // CON MENOS DE TRES CORNERS NO HAY RITMO. El corte del minuto 15
+    // protegia del minuto 3 pero no de esto: en el minuto 16 con cero
+    // cornes la cuenta daba «a este paso 0», o sea que el partido acaba
+    // sin un solo corner, y encima acusaba al modelo de no coincidir.
+    // Un ritmo sacado de n cornes tiene un error de 1/raiz(n): con uno
+    // es del 100 %, con dos del 71 %. Eso no es una estimacion.
+    if (van < 3) {
+      return '<div class="ritmo"><span>llevan <b>' + van + '</b> córners</span>'
+        + '<em>Todavía son pocos para sacar un ritmo. El modelo sí cuenta con '
+        + 'lo que suele pasar en esta liga: espera <b>'
+        + (m.expC == null ? '–' : Number(m.expC).toFixed(1)) + '</b>.</em></div>';
+    }
     var porMin = van / m.min, proy = porMin * 95;
     var mod = m.expC == null ? null : Number(m.expC);
     return '<div class="ritmo">'
@@ -1396,7 +1408,8 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
       + '<span>llevan <b>' + van + '</b> córners</span>'
       + '<span>minuto <b>' + mi + '</b></span>'
       + '<span>quedan <b>' + Math.max(0, 95 - mi) + "'</b> con añadidos</span>"
-      + '<span>a este paso <b>' + (mi >= 15 ? Math.round(ritmo * 95) : '–') + '</b></span>'
+      + '<span>a este paso <b>'
+      + (mi >= 15 && van >= 3 ? Math.round(ritmo * 95) : 'aún pronto') + '</b></span>'
       + '<span>el modelo <b>' + (m.expC == null ? '–' : Number(m.expC).toFixed(1)) + '</b></span>'
       + '</div><div class="camp">';
 
