@@ -950,8 +950,14 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
 /* La tenia escondida a proposito, por limpieza. En un carrusel de adorno
    esta bien; aqui el ultimo trozo quedaba cortado y no habia nada que
    dijera que seguia habiendo cosas, asi que parecia un fallo. */
-.viva{scrollbar-width:thin;scrollbar-color:#b9c6d8 transparent;
-      padding-bottom:12px}
+/* DEJA DE CORTARSE. La barra ayudaba, pero seguia habiendo que
+   deslizar para ver el final y lo que Diego quiere es VER lo que
+   hay. Se parte en lineas: todo a la vista, sin deslizar. Con tope
+   de alto por si un dia caen veinte cosas a la vez. */
+.viva{flex-wrap:wrap;overflow-x:visible;overflow-y:auto;max-height:9.5rem;
+      scrollbar-width:thin;scrollbar-color:#b9c6d8 transparent;
+      padding-bottom:10px}
+.vp{max-width:none;flex:0 1 auto}
 .viva::-webkit-scrollbar{display:block;height:8px}
 .viva::-webkit-scrollbar-track{background:#eceff5;border-radius:999px}
 .viva::-webkit-scrollbar-thumb{background:#b9c6d8;border-radius:999px}
@@ -988,6 +994,70 @@ tr.j-perdio td{background:#fdeef0}
 /* Sin dato NO es perdida: se pinta en gris y queda fuera de las cuentas. */
 tr.j-nodato td{background:#f1f3f7;color:var(--tenue)}
 tr.j-nodato b{color:var(--tenue)}
+/* ---- La jugada: la pantalla que solo dice que hacer ---- */
+.jug{background:var(--tabla);border:1px solid var(--raya);border-radius:14px;
+     padding:15px 16px;margin-bottom:11px;
+     box-shadow:0 1px 2px rgba(20,26,34,.05),0 6px 18px rgba(20,26,34,.06)}
+.jug.viene{opacity:.95;border-style:dashed}
+.jcab{display:flex;justify-content:space-between;align-items:baseline;
+      gap:12px;flex-wrap:wrap}
+.jeq{font-family:var(--cartel);font-size:1.6rem;letter-spacing:.02em;
+     display:flex;align-items:center;flex-wrap:wrap}
+.jeq img.esc{vertical-align:-4px;margin-right:6px;object-fit:contain}
+.jeq .vs{color:var(--tenue);margin:0 8px 0 4px}
+.jmin{font-family:var(--dato);font-size:.82rem;color:var(--tenue);white-space:nowrap}
+.jmin b{color:var(--tinta)}
+.jliga{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+       font-size:.8rem;color:var(--tenue);margin-top:2px}
+.jrit{font-family:var(--dato)}
+.jrit b{color:var(--aviso);font-size:.95rem}
+/* La caja de la jugada: lo unico que hay que leer. */
+.jcaja{margin-top:12px;padding:13px 14px;border-radius:12px;
+       background:var(--cespedf);border:2px solid var(--cesped)}
+.jtit{font-family:var(--cartel);font-size:1.05rem;letter-spacing:.14em;
+      text-transform:uppercase;color:var(--cesped)}
+.jnums{display:flex;gap:8px;flex-wrap:wrap;margin:9px 0 10px}
+.jchip{width:2.8rem;height:2.8rem;border-radius:50%;display:grid;place-items:center;
+       font-family:var(--cartel);font-size:1.5rem;background:var(--cesped);color:#fff;
+       border:2px dashed rgba(255,255,255,.65);
+       box-shadow:0 2px 8px rgba(0,128,74,.35)}
+.jpide{font-family:var(--dato);font-size:.85rem;color:var(--tinta)}
+.jpide b{font-size:1.1rem;color:var(--cesped)}
+.jpide i{font-style:normal;color:var(--tenue);font-size:.78rem}
+.jeur{font-family:var(--dato);font-size:.85rem;color:var(--tinta);margin-top:4px}
+.jeur b{color:var(--cesped)}
+.jsin{margin-top:11px;padding:10px 12px;border-radius:10px;background:var(--avisof);
+      border:1px solid var(--aviso);font-size:.82rem;line-height:1.5}
+.jbot{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.jbot .casa{flex:none}
+button.jok{padding:7px 15px;border-radius:999px;cursor:pointer;
+           border:1px solid var(--magenta);background:#fdeef8;color:var(--magenta);
+           font-family:var(--cartel);font-size:1rem;letter-spacing:.06em}
+button.jok:hover{background:var(--magenta);color:#fff}
+.jya{font-family:var(--dato);font-size:.78rem;color:var(--magenta)}
+@media (max-width:640px){
+  .jeq{font-size:1.3rem}
+  .jchip{width:2.4rem;height:2.4rem;font-size:1.25rem}
+  .jug{padding:13px}
+}
+/* ---- ENTRA o SAL ---- */
+.ver{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+     margin-top:12px;padding:11px 14px;border-radius:12px;border:2px solid}
+.vpal{font-family:var(--cartel);font-size:1.9rem;letter-spacing:.06em;line-height:1}
+.vexp{font-size:.82rem;line-height:1.5;flex:1;min-width:12rem}
+.v-entra{background:var(--cespedf);border-color:var(--cesped)}
+.v-entra .vpal{color:var(--cesped)}
+/* SAL es el unico que se mueve, y se mueve porque es el que se pasa:
+   una ventana de cierre que no ves no vuelve. */
+.v-sal{background:#fdeef0;border-color:var(--rojo)}
+.v-sal .vpal{color:var(--rojo);animation:late 1.3s ease-in-out infinite}
+.v-aguanta{background:var(--avisof);border-color:var(--aviso)}
+.v-aguanta .vpal{color:var(--aviso)}
+.v-condic{background:#eef4fb;border-color:var(--frio)}
+.v-condic .vpal{color:var(--frio);font-size:1.5rem}
+.v-espera{background:#f1f3f7;border-color:var(--raya)}
+.v-espera .vpal{color:var(--tenue);font-size:1.5rem}
+@media (max-width:640px){ .vpal{font-size:1.6rem} .vexp{min-width:100%} }
 </style>
 </head>
 <body>
@@ -1032,7 +1102,9 @@ tr.j-nodato b{color:var(--tenue)}
 
   var EV_MIN = 0.07;
   var D = null;                       // los datos
-  var VISTA = 'lista';
+  // Arranca en «La jugada»: es la unica pantalla que dice que hacer. Si
+  // habia otra guardada de antes, se respeta.
+  var VISTA = leer('tl.vista', 'jugada');
   var FILTRO = 'todo';                // todo | corners | valor
   var SONIDO = false;
   var VISTOS = {};                    // lo que ya sono, para no repetir
@@ -3095,7 +3167,216 @@ tr.j-nodato b{color:var(--tenue)}
     return { n: n, c: c, ben: (c - n) / n, pmin: n / c, pierde: c <= n };
   }
 
+  // ---------- que competicion pesa mas ----------
+  // ESTO ES UN JUICIO MIO, NO UNA MEDIDA, y por eso esta a la vista y se
+  // puede cambiar. Un +40 % en una liga pequena no vale lo que un +12 %
+  // en una grande: alli la cuota se mueve sola, el mercado es fino y la
+  // estadistica que tenemos es peor.
+  var PESO = {
+    2: 100,                       // Champions
+    39: 95, 140: 95, 135: 92, 78: 92, 61: 88,   // Premier, Liga, Serie A, Bundes, Ligue 1
+    1: 90, 5: 85,                 // Mundial, Nations League
+    3: 80, 848: 70,               // Europa, Conference
+    94: 75,                       // Portugal
+    128: 74, 71: 74, 13: 78, 11: 70,  // Argentina, Brasil, Libertadores, Sudamericana
+    268: 68, 262: 66, 253: 62, 307: 60,
+    6: 72, 36: 66,                // Copa Africana y su clasificacion
+    142: 64, 44: 64, 525: 70,     // Liga F, WSL, Champions femenina
+    141: 58,                      // Segunda de Espana
+  };
+  function pesoDe(m) {
+    var p = PESO[m.leagueId];
+    if (p != null) return p;
+    // Lo que no esta en la lista va al final, pero no se esconde.
+    return 10;
+  }
+
+  // ---------- la ficha que solo dice que hacer ----------
+  function fichaJugada(m) {
+    var R = (m.exactRec || []).filter(function (x) { return x && x.nums && x.nums.length; });
+    var van = (m.cH || 0) + (m.cA || 0);
+    var h = '<div class="jug">'
+      + '<div class="jcab">'
+      + '<div class="jeq">' + escudoImg(m.hId) + esc(m.home)
+      + '<span class="vs">–</span>' + escudoImg(m.aId) + esc(m.away) + '</div>'
+      + '<div class="jmin">minuto <b>' + (m.min == null ? '–' : m.min) + '</b>'
+      + ' · <b>' + m.sH + '-' + m.sA + '</b>'
+      + (m.hasStats ? ' · <b>' + van + '</b> córners' : '') + '</div>'
+      + '</div>'
+      + '<div class="jliga">' + esc(m.league) + (m.country ? ' · ' + esc(m.country) : '')
+      + (m.hasStats && m.min >= 15 && van >= 3
+          ? '<span class="jrit">a este paso <b>' + Math.round(van / m.min * 95) + '</b>'
+            + (m.expC == null ? '' : ' · el modelo <b>' + Number(m.expC).toFixed(1) + '</b>') + '</span>'
+          : (m.expC == null ? '' : '<span class="jrit">el modelo <b>'
+              + Number(m.expC).toFixed(1) + '</b></span>'))
+      + '</div>';
+
+    if (!R.length) {
+      h += '<div class="jsin">Todavía no hay jugada: sin estadística de córners el modelo '
+        + 'no abre franja, y prefiere callarse a inventarse un número.</div>';
+      return h + veredictoHTML(m, null) + jbotones(m, null) + '</div>';
+    }
+
+    // La misma regla de siempre: con cuotas de verdad gana la de mas
+    // ventaja; sin ellas, la que menos le pide a la casa.
+    var casa = {}, e = m.exactPlan, hay = false;
+    if (e && e.nums && e.odds) { e.nums.forEach(function (x, i) { casa[x] = Number(e.odds[i]); }); hay = true; }
+    var filas = R.map(function (b) {
+      var n = b.nums.length, pide = b.minOdd != null ? Number(b.minOdd) : (n / b.P);
+      var todas = b.nums.every(function (x) { return casa[x] != null; });
+      var med = null;
+      if (todas) {
+        var S = b.nums.reduce(function (a, x) { return a + 1 / casa[x]; }, 0);
+        med = b.P / S - 1;
+      }
+      return { n: n, nums: b.nums, P: b.P, pide: pide, med: med };
+    });
+    var conM = filas.filter(function (f) { return f.med != null; });
+    var el = conM.length
+      ? conM.slice().sort(function (a, b) { return b.med - a.med; })[0]
+      : filas.slice().sort(function (a, b) { return a.pide - b.pide; })[0];
+
+    var pones = PORNUM * el.n, cobras = PORNUM * el.pide;
+    h += '<div class="jcaja">'
+      + '<div class="jtit">La jugada</div>'
+      + '<div class="jnums">' + el.nums.map(function (n) {
+          return '<span class="jchip">' + n + '</span>';
+        }).join('') + '</div>'
+      + '<div class="jpide">cada uno tiene que pagar <b>' + el.pide.toFixed(2) + '</b> o más'
+      + ' <i>· acierta ' + Math.round(el.P * 100) + ' de cada 100</i></div>'
+      + '<div class="jeur">a ' + PORNUM + ' € pones <b>' + eur(pones) + '</b>'
+      + ' y cobras <b>' + eur(cobras) + '</b> si entra</div>'
+      + '</div>';
+    return h + veredictoHTML(m, el) + jbotones(m, el) + '</div>';
+  }
+
+  // ---------- ENTRA o SAL, en una palabra ----------
+  // Diego: «hace ruido ahora, entre entra o salte... porque la relacion
+  // del numero que jugaste se aproxima a premio, pagan tambien y te sale
+  // mejor salirte».
+  //
+  // Eso ultimo es exacto y es la razon de que exista SAL: segun caen
+  // cornes y tus numeros se acercan, la casa sube lo que ofrece por
+  // cerrar, y hay un momento en que cerrar paga mas de lo que vale
+  // aguantar. Ese momento no avisa solo y se pasa.
+  //
+  // Cuatro estados y nada mas: una pantalla con cuatro respuestas se lee
+  // de un vistazo; una con doce hay que estudiarla.
+  function veredicto(m, el) {
+    var p = POS && POS[m.id];
+    if (p) {
+      var v = null;
+      try { v = valorCierre(m.id); } catch (e) {}
+      if (v && v.margen != null && v.margen >= CIERRE_MIN) {
+        return { k: 'sal', t: 'SAL',
+          d: 'cerrar vale <b>' + eur(v.vale) + '</b> sobre los ' + eur(v.puesto)
+             + ' que pusiste · <b>' + (v.margen >= 0 ? '+' : '')
+             + Math.round(v.margen * 100) + ' %</b>. Mira el cash out de bet365: '
+             + 'el numero que manda es el suyo, este es el nuestro.' };
+      }
+      if (v && v.margen != null) {
+        return { k: 'aguanta', t: 'AGUANTA',
+          d: 'cerrar ahora te daria <b>' + eur(v.vale) + '</b> sobre ' + eur(v.puesto)
+             + ' (' + Math.round(v.margen * 100) + ' %). Todavia no compensa.' };
+      }
+      return { k: 'aguanta', t: 'AGUANTA',
+        d: 'sin estadistica en directo no se puede valorar el cierre todavia.' };
+    }
+    if (!el) return { k: 'espera', t: 'ESPERA', d: 'todavia no hay franja que jugar.' };
+    if (el.med != null) {
+      return el.med > 0
+        ? { k: 'entra', t: 'ENTRA',
+            d: 'con las cuotas que publica la casa ahora, la franja de ' + el.n
+               + ' numeros tiene <b>' + (el.med >= 0 ? '+' : '')
+               + Math.round(el.med * 100) + ' %</b> de ventaja.' }
+        : { k: 'espera', t: 'NO ENTRES',
+            d: 'la casa paga menos de lo que haria falta: la franja sale a <b>'
+               + Math.round(el.med * 100) + ' %</b>.' };
+    }
+    // Lo honesto cuando la casa no publica exactos: no se puede decir
+    // ENTRA, porque no sabemos a cuanto paga. Se dice la condicion.
+    return { k: 'condic', t: 'ENTRA SI\u2026',
+      d: 'si bet365 te paga <b>' + el.pide.toFixed(2) + ' o mas</b> en <b>cada uno</b> de los '
+         + el.n + '. Si uno solo se queda corto, no entres.' };
+  }
+
+  function veredictoHTML(m, el) {
+    var v = veredicto(m, el);
+    return '<div class="ver v-' + v.k + '"><span class="vpal">' + v.t + '</span>'
+      + '<span class="vexp">' + v.d + '</span></div>';
+  }
+
+  function jbotones(m, el) {
+    var h = '<div class="jbot">'
+      + '<a class="casa" href="' + casaURL() + '" target="_blank" rel="noopener">bet365</a>'
+      + '<a class="casa wa" href="https://wa.me/?text=' + encodeURIComponent(resumenWA(m))
+      + '" target="_blank" rel="noopener">al móvil</a>';
+    if (el && !(POS && POS[m.id])) {
+      h += '<button type="button" class="jok" onclick="window.tlPos.jugado(\''
+        + esc(String(m.id)) + '\',\'' + el.nums.join('-') + '\',' + el.pide.toFixed(2)
+        + ')">✔ lo jugué</button>';
+    } else if (POS && POS[m.id]) {
+      h += '<span class="jya">lo estás vigilando</span>';
+    }
+    return h + '</div>';
+  }
+
+  // Los que estan por empezar: sin minuto ni cornes no hay jugada, solo
+  // a que hora sacan y lo que el modelo espera.
+  function fichaViene(u) {
+    var falta = u.kickoff_ts ? Math.round((Number(u.kickoff_ts) - Date.now()) / 60000) : null;
+    var h = '<div class="jug viene">'
+      + '<div class="jcab"><div class="jeq">' + esc(u.home) + '<span class="vs">–</span>'
+      + esc(u.away) + '</div>'
+      + '<div class="jmin">' + (u.kickoff_ts ? 'saca a las <b>' + hhmm(Number(u.kickoff_ts)) + '</b>' : '')
+      + (falta != null && falta > 0
+          ? ' · en <b>' + (falta >= 60 ? Math.floor(falta / 60) + ' h ' + (falta % 60) + ' min' : falta + ' min') + '</b>'
+          : '') + '</div></div>'
+      + '<div class="jliga">' + esc(u.league_name || '')
+      + (u.pre_corners == null ? ''
+          : '<span class="jrit">el modelo espera <b>' + Number(u.pre_corners).toFixed(1) + '</b></span>')
+      + '</div>';
+    if (esMediaDeLiga(u)) {
+      h += '<div class="jsin">Ese número es la media de la liga, no de estos equipos: hay otro '
+        + 'partido por empezar con exactamente el mismo valor. Aquí el mercado sabe más que '
+        + 'nosotros.</div>';
+    }
+    return h + '</div>';
+  }
+
   var VISTAS = {
+    // ---------- LA PRIMERA PANTALLA: solo lo que hay que decidir ----------
+    // Los cuarenta numeros siguen en sus pestanas y siguen haciendo falta,
+    // porque de ellos sale la prediccion. Lo que cambia es que ya no hay
+    // que leerlos para decidir.
+    jugada: { t: 'La jugada', n: function () {
+      return filtra(vivos()).filter(function (m) { return m.analyzed; }).length;
+    }, pinta: function () {
+      var L = filtra(vivos()).filter(function (m) { return m.analyzed; });
+      // El orden lo manda la competicion; a igualdad, la ventaja.
+      L.sort(function (a, b) {
+        var d = pesoDe(b) - pesoDe(a);
+        if (d) return d;
+        var ea = (a.best && a.best.ev) || -9, eb = (b.best && b.best.ev) || -9;
+        return eb - ea;
+      });
+      var up = ((D && D.upcoming) || []).slice().sort(function (a, b) {
+        return (a.kickoff_ts || 0) - (b.kickoff_ts || 0);
+      }).slice(0, 5);
+
+      var h = chipsHTML();
+      if (!L.length) {
+        h += '<div class="vacia"><b>Ahora mismo no hay ninguna jugada.</b><br>'
+          + 'De los ' + vivos().length + ' partidos en juego, ninguno de primera división '
+          + 'tiene a la vez cuota de córners y estadística en directo, que es lo que hace '
+          + 'falta para abrir una franja.</div>';
+      } else {
+        h += '<h2>Jugando ahora</h2>' + L.map(fichaJugada).join('');
+      }
+      if (up.length) h += '<h2>Por empezar</h2>' + up.map(fichaViene).join('');
+      return h;
+    } },
+
     posiciones: { t: 'Mis posiciones', n: function () {
       return Object.keys(POS).length || null;
     }, pinta: function () {
@@ -3666,7 +3947,11 @@ tr.j-nodato b{color:var(--tenue)}
         + VISTAS[k].t + (c == null ? '' : '<span class="cuantos">' + c + '</span>') + '</button>';
     }).join('');
     n.querySelectorAll('[data-v]').forEach(function (b) {
-      b.onclick = function () { VISTA = b.dataset.v; render(); window.scrollTo(0, 0); };
+      b.onclick = function () {
+        VISTA = b.dataset.v;
+        guardar('tl.vista', VISTA);
+        render(); window.scrollTo(0, 0);
+      };
     });
   }
 
