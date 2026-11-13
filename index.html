@@ -1058,6 +1058,9 @@ button.jok:hover{background:var(--magenta);color:#fff}
 .v-espera{background:#f1f3f7;border-color:var(--raya)}
 .v-espera .vpal{color:var(--tenue);font-size:1.5rem}
 @media (max-width:640px){ .vpal{font-size:1.6rem} .vexp{min-width:100%} }
+/* El aviso de suelto contra bloque: es una confusion que cuesta dinero. */
+.avisoBloque{background:#eef4fb;border:1px solid var(--frio);border-radius:10px;
+             padding:9px 12px;margin:0 0 10px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -1627,7 +1630,8 @@ button.jok:hover{background:var(--magenta);color:#fff}
         + '<span class="cn">' + n + '</span>'
         + '<span class="cb"><i style="width:' + ancho.toFixed(1) + '%"></i></span>'
         + '<span class="cp">' + (pr * 100).toFixed(1) + ' %</span>'
-        + '<span class="cq">' + (minc == null || minc > 999 ? 'ni pagando' : 'paga más de <b>' + minc.toFixed(2) + '</b>') + '</span>'
+        + '<span class="cq">' + (minc == null || minc > 999 ? 'ni pagando'
+            : 'suelto, paga más de <b>' + minc.toFixed(2) + '</b>') + '</span>'
         + (o != null
             ? '<span class="cc ' + (entra ? 'si' : 'no') + '">la casa ' + o.toFixed(2)
               + ' · ' + (entra ? 'ENTRA' : 'no llega') + '</span>'
@@ -1645,8 +1649,12 @@ button.jok:hover{background:var(--magenta);color:#fff}
     h += '<p class="li camppie">De <b>' + desde + '</b> a <b>' + corte + '</b> córners hay un <b>'
       + Math.round(bajo * 100) + ' %</b>; de <b>' + (corte + 1) + '</b> para arriba, un <b>'
       + Math.round(alto * 100) + ' %</b>. La columna de la derecha es lo que bet365 tiene que '
-      + 'pagar por ese número para que la apuesta salga a cero a la larga: '
-      + '<b>si paga más, entra; si paga menos, no entra aunque apetezca</b>.</p>';
+      + 'pagar por ese número <b>si lo juegas suelto</b>: es uno partido por su '
+      + 'probabilidad. <b>Jugando en bloque la cuenta es otra</b> y pide más: con n '
+      + 'números al mismo importe hay que pagar los n para cobrar uno, así que cada uno '
+      + 'tiene que pagar <b>n dividido entre la probabilidad de todo el bloque</b>. Esa es '
+      + 'la columna de «Cuántas posiciones», y es la que vale para cómo juegas tú. '
+      + 'Un número que parece bueno suelto puede no llegar dentro de un bloque.</p>';
     return h;
   }
 
@@ -1970,7 +1978,12 @@ button.jok:hover{background:var(--magenta);color:#fff}
 
     if (!unicas.length && !(m.exactRec && m.exactRec.length)) return '';
 
-    var h = '<h2>Qué es buena opción aquí</h2><div class="ops">';
+    var h = '<h2>Qué es buena opción aquí</h2>'
+      + '<p class="li avisoBloque">Las dos primeras son <b>apuestas sueltas</b>: ahí el '
+      + 'porcentaje es de esa apuesta sola. La tercera es la <b>variante en bloque</b>, '
+      + 'que es como juegas tú: pones en todos los números y cobras por uno, así que lo '
+      + 'puesto en los otros también hay que restarlo.</p>'
+      + '<div class="ops">';
     unicas.forEach(function (o) {
       var entra = o.odd > o.min;
       h += '<div class="opf' + (entra ? ' si' : '') + '">'
