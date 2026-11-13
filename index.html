@@ -6,7 +6,7 @@
 <title>El tablero</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600;700&display=swap">
 <style>
   /* Marcador de vestuario: barra de pestañas fija arriba, y debajo una
      sola columna que cambia entera. Verde césped sobre papel. */
@@ -598,6 +598,141 @@ td .casas{margin-top:7px}
 .apu.ya{font-size:.78rem;color:var(--magenta);font-family:var(--dato);
         border:1px dashed var(--magenta);border-radius:8px;padding:6px 11px;
         background:rgba(255,82,207,.08)}
+
+/* ======================================================================
+   MAS TONO. Otra capa encima de la piel, al final para que gane.
+   Regla que no se rompe: el brillo sigue al valor. Lo que no llega
+   sigue apagado y sigue diciendolo con palabras.
+   ====================================================================== */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"]{
+  --cartel:"Bebas Neue","Oswald","Arial Narrow",system-ui,sans-serif;
+}
+
+/* ---- el titulo de neon ---- */
+/* Los halos en capas son lo que hace un tubo: dos blancos muy pegados
+   para el cristal, y tres de color cada vez mas abiertos para el aire. */
+h1{
+  font-family:var(--cartel);font-weight:400;
+  font-size:clamp(2.6rem,11vw,4.6rem);letter-spacing:.04em;line-height:.92;
+  background:none;-webkit-background-clip:border-box;background-clip:border-box;
+  color:#eafff3;
+  text-shadow:
+    0 0 2px #fff,
+    0 0 7px #fff,
+    0 0 18px var(--cesped),
+    0 0 38px var(--cesped),
+    0 0 70px rgba(43,255,140,.45);
+  filter:none;
+  animation:tubo 6s ease-in-out infinite;
+}
+/* Muy despacio. Un cartel que parpadea rapido es una averia, no un casino. */
+@keyframes tubo{
+  0%,100%{opacity:1}
+  47%{opacity:.93}
+  50%{opacity:1}
+}
+
+/* ---- el rail de luces ---- */
+.alto{position:relative;padding-bottom:18px}
+.alto::after{
+  content:"";position:absolute;left:0;right:0;bottom:4px;height:6px;
+  background-image:radial-gradient(circle,var(--oro) 0 2px,transparent 2.5px);
+  background-size:17px 6px;background-repeat:repeat-x;
+  opacity:.55;animation:corren 3.2s linear infinite;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+          mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+}
+@keyframes corren{from{background-position:0 0}to{background-position:17px 0}}
+
+/* ---- las cajas, con filo de oro ---- */
+.caja{position:relative;border-radius:14px;
+      box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 16px 40px rgba(0,0,0,.6)}
+.caja::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,210,74,.55),transparent);
+  border-radius:14px 14px 0 0;pointer-events:none}
+
+/* ---- la ventaja, enorme ---- */
+/* Era la cifra que decide y estaba en cuerpo 1,5. */
+.op .v{font-family:var(--cartel);font-size:2.4rem;letter-spacing:.01em;
+       line-height:1}
+.op .v.si{color:transparent;
+  background:linear-gradient(180deg,#eaffee,var(--cesped) 60%,#12c96a);
+  -webkit-background-clip:text;background-clip:text;
+  filter:drop-shadow(0 0 16px rgba(43,255,140,.55))}
+.op{border-radius:12px;padding:13px 14px}
+.op.top{box-shadow:var(--luzv)}
+
+/* ---- LOS NUMEROS SON FICHAS ---- */
+.cf{gap:11px;padding:7px 10px}
+.cf .cn{
+  width:2.6rem;height:2.6rem;flex:none;border-radius:50%;
+  display:grid;place-items:center;
+  font-family:var(--cartel);font-size:1.45rem;line-height:1;
+  color:var(--tinta);text-align:center;
+  background:radial-gradient(circle at 32% 26%,#31425e,#121a28 70%);
+  border:2px dashed rgba(255,255,255,.22);
+  box-shadow:0 3px 10px rgba(0,0,0,.65),inset 0 0 12px rgba(0,0,0,.55)}
+/* La del mas probable, en oro. */
+.cf.pico .cn{
+  background:radial-gradient(circle at 32% 26%,#ffeeb4,#c89218 72%);
+  color:#1b1304;border-color:rgba(255,255,255,.75);text-shadow:none;
+  box-shadow:0 0 26px rgba(255,210,74,.65),inset 0 0 14px rgba(0,0,0,.3);
+  animation:ficha 2.8s ease-in-out infinite}
+@keyframes ficha{0%,100%{box-shadow:0 0 26px rgba(255,210,74,.65),inset 0 0 14px rgba(0,0,0,.3)}
+                 50%{box-shadow:0 0 40px rgba(255,210,74,.9),inset 0 0 14px rgba(0,0,0,.3)}}
+/* Las suyas, en fucsia: es su dinero. */
+.cf.mio .cn{
+  background:radial-gradient(circle at 32% 26%,#ffc2ef,#b01a86 72%);
+  color:#230418;border-color:rgba(255,255,255,.7);
+  box-shadow:0 0 24px rgba(255,82,207,.65),inset 0 0 14px rgba(0,0,0,.3)}
+/* Las barras, mas altas y con brillo dentro. */
+.cf .cb{height:16px;background:#0b111b;
+        box-shadow:inset 0 2px 6px rgba(0,0,0,.75)}
+.cf .cb i{box-shadow:0 0 14px rgba(63,201,255,.55)}
+.cf .cp{font-family:var(--dato);font-weight:700;font-size:.92rem}
+.cf .cc.si{font-family:var(--cartel);font-size:.95rem;letter-spacing:.06em;
+           padding:2px 11px}
+
+/* ---- la cinta, como un panel LED ---- */
+.viva{background:#05080d;border-radius:10px;padding:9px 10px;
+      box-shadow:inset 0 3px 14px rgba(0,0,0,.9),0 0 0 1px var(--raya);
+      position:relative;overflow:hidden}
+/* Las lineas de barrido de un panel de verdad. Muy flojas: si se notan,
+   molestan al leer, y esto hay que leerlo. */
+.viva::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px)}
+.vp{background:#0a1018;border-color:#1b2940;border-radius:6px}
+.vp b{font-family:var(--cartel);font-size:1.05rem;letter-spacing:.04em}
+.v-gol b{color:var(--cesped);text-shadow:var(--luzv)}
+.v-corner b{color:var(--frio);text-shadow:0 0 14px rgba(63,201,255,.6)}
+.v-roja b{color:var(--rojo);text-shadow:var(--luzr)}
+.vmudo{font-family:var(--dato);color:#4d6584;text-shadow:0 0 10px rgba(63,201,255,.25)}
+
+/* ---- titulares y pestanas ---- */
+h2{font-family:var(--cartel);font-size:1.12rem;letter-spacing:.14em;
+   color:var(--oro);text-shadow:0 0 18px rgba(255,210,74,.4)}
+.eq{font-family:var(--cartel);font-size:1.75rem;letter-spacing:.03em}
+.pestanas button{font-family:var(--cartel);font-size:1.02rem;letter-spacing:.09em}
+.cuenta b{font-family:var(--cartel);font-size:1.3rem}
+.latido .vive{font-family:var(--cartel);font-size:1rem;letter-spacing:.12em}
+.firma b{font-family:var(--cartel);font-size:1.4rem;letter-spacing:.14em;
+         text-shadow:0 0 18px rgba(255,210,74,.45)}
+.apu button{font-family:var(--cartel);font-size:.98rem}
+.cierra{font-family:var(--cartel);font-size:1rem;letter-spacing:.09em;padding:3px 11px}
+
+/* ---- en el movil, todo esto tiene que seguir cabiendo ---- */
+@media (max-width:640px){
+  .cf{gap:8px;padding:6px 7px}
+  .cf .cn{width:2.15rem;height:2.15rem;font-size:1.2rem;border-width:2px}
+  .cf .cb{min-width:2.5rem;height:13px}
+  .op .v{font-size:1.9rem}
+  .eq{font-size:1.4rem}
+  .alto::after{background-size:14px 6px}
+}
+/* Y quien pida que las cosas no se muevan, que no se le muevan. */
+@media (prefers-reduced-motion:reduce){
+  h1,.alto::after,.cf.pico .cn,.cierra{animation:none}
+}
 </style>
 </head>
 <body>
