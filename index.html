@@ -932,9 +932,19 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
 .bf.yo{border:2px solid var(--cesped);background:var(--cespedf)}
 .bf.yo .bn{color:var(--cesped)}
 @media (max-width:640px){
-  .bf{gap:8px;padding:8px 10px;font-size:.73rem}
-  .bf .bl{min-width:100%;font-size:1rem}
-  .bf .bg{font-size:1.05rem}
+  /* En el movil la fila no cabe en una linea y la columna de la derecha
+     se cortaba («+9...», «SI EN...»): medido a 375px. Pasa a rejilla de
+     dos columnas —la ficha a la izquierda, lo demas apilado— que es lo
+     unico que cabe sin encoger la letra hasta no leerse. */
+  .bf{display:grid;grid-template-columns:3.4rem 1fr;gap:3px 11px;
+      align-items:start;padding:9px 11px;font-size:.76rem}
+  .bf .bn{grid-row:1/span 4;align-self:center;min-width:0}
+  .bf .bl{min-width:0;font-size:1.05rem}
+  .bf .bg{flex-direction:row;align-items:baseline;gap:5px;font-size:1.1rem}
+  .bf .bm{justify-self:start}
+  .opf{display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:.76rem}
+  .opf .oe{grid-column:1/span 2;min-width:0}
+  .opf .ov{grid-column:1/span 2;justify-self:start;margin-left:0}
 }
 </style>
 </head>
