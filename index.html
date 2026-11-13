@@ -4110,6 +4110,26 @@ button.jok:hover{background:var(--magenta);color:#fff}
       });
   }
 
+  // ---------- al entrar o al volver, datos al momento ----------
+  // Diego: «cuando entro o refresco que la herramienta traiga datos mas
+  // rapido y mas seguido».
+  //
+  // El navegador congela los temporizadores de las pestanas que no se
+  // ven, asi que al volver despues de un rato lo primero que se veia era
+  // la foto de cuando te fuiste, hasta que tocara el siguiente ciclo.
+  // Ahora al volver se despierta al worker y se lee de inmediato.
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    try {
+      if (MOTOR) pulso();
+      PROX = 0;            // que la proxima vuelta lea ya
+      cargar();
+    } catch (e) {}
+  });
+  window.addEventListener('focus', function () {
+    try { PROX = 0; } catch (e) {}
+  });
+
   function tic() {
     latido();
     // El pulso va antes que la lectura: si el worker esta dormido, lo
