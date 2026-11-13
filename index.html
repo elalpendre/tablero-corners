@@ -879,6 +879,63 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
 /* Verde de WhatsApp pero legible sobre blanco: 4,6:1 medido. */
 .casa.wa{border-color:#0f7a6c;color:#0f7a6c}
 .casa.wa:hover{background:#0f7a6c;color:#fff}
+/* ---- Precios: el top y las opciones ---- */
+.top5{display:inline-block;background:var(--aviso);color:#fff;font-family:var(--cartel);
+      font-size:.95rem;letter-spacing:.05em;padding:1px 9px;border-radius:999px;
+      vertical-align:2px}
+.ops{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.opf{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+     padding:9px 12px;border-radius:10px;background:#fbfcfe;
+     border:1px solid var(--raya);font-family:var(--dato);font-size:.8rem}
+.opf.si{border-color:var(--cesped);background:var(--cespedf)}
+.opf.var{border-style:dashed;background:#fffaed;border-color:#d79f12}
+.opf .oe{font-family:var(--cartel);font-size:1.18rem;letter-spacing:.02em;
+         color:var(--tinta);min-width:9rem;flex:1}
+.opf .oe b{color:var(--aviso)}
+.opf b{color:var(--tinta)}
+.opf .on b{color:var(--frio)}
+.opf .ov{margin-left:auto;padding:2px 11px;border-radius:999px;
+         font-family:var(--cartel);font-size:.98rem;letter-spacing:.05em;white-space:nowrap}
+.opf .ov.si{background:var(--cesped);color:#fff}
+.opf .ov.no{background:#eef1f6;color:var(--tenue)}
+.laBuena{background:#fbfcfe;border:1px solid var(--raya);border-left:4px solid var(--aviso);
+         border-radius:10px;padding:11px 13px;font-size:.87rem;line-height:1.55;
+         margin:0 0 12px}
+.pz.previa{opacity:.97}
+@media (max-width:640px){
+  .opf{gap:7px;padding:8px 10px;font-size:.75rem}
+  .opf .oe{font-size:1.05rem;min-width:100%}
+  .opf .ov{margin-left:0;font-size:.9rem}
+}
+/* ---- cuantas posiciones ---- */
+.bandas{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+.bf{display:flex;align-items:center;gap:13px;flex-wrap:wrap;
+    padding:9px 12px;border-radius:10px;background:#fbfcfe;
+    border:1px solid var(--raya);font-family:var(--dato);font-size:.78rem}
+.bf .bn{font-family:var(--cartel);font-size:1.6rem;line-height:1;color:var(--tinta);
+        display:flex;flex-direction:column;align-items:center;min-width:3.2rem}
+.bf .bn small{font-family:var(--texto);font-size:.58rem;text-transform:uppercase;
+              letter-spacing:.09em;color:var(--tenue);margin-top:2px}
+.bf .bl{font-family:var(--cartel);font-size:1.15rem;letter-spacing:.06em;
+        color:var(--frio);flex:1;min-width:7rem}
+.bf .bq b{color:var(--frio)}
+.bf .bg{font-family:var(--cartel);font-size:1.25rem;color:var(--aviso);
+        display:flex;flex-direction:column;align-items:flex-end}
+.bf .bg small{font-family:var(--texto);font-size:.58rem;text-transform:uppercase;
+              letter-spacing:.09em;color:var(--tenue)}
+.bf .bm{padding:2px 10px;border-radius:999px;font-size:.7rem;white-space:nowrap;
+        border:1px solid var(--raya);color:var(--tenue);background:#fff}
+.bf .bm.si{background:var(--cesped);border-color:var(--cesped);color:#fff}
+.bf .bm.sinq{opacity:.6}
+/* La elegida, marcada de verdad: es la unica linea de toda la pantalla
+   que dice «haz esto», asi que tiene que distinguirse de un vistazo. */
+.bf.yo{border:2px solid var(--cesped);background:var(--cespedf)}
+.bf.yo .bn{color:var(--cesped)}
+@media (max-width:640px){
+  .bf{gap:8px;padding:8px 10px;font-size:.73rem}
+  .bf .bl{min-width:100%;font-size:1rem}
+  .bf .bg{font-size:1.05rem}
+}
 </style>
 </head>
 <body>
@@ -1704,13 +1761,230 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
     return h + '</table>';
   }
 
+  // ---------- los numeros son enteros ----------
+  // En el campo no cae medio corner. Una linea de 9,5 no existe: existe
+  // «10 o mas» y «9 o menos». Escribirlo con el ,5 obliga a traducir de
+  // cabeza cada vez, y ahi se cuela el error de uno.
+  function enteroDe(side, line) {
+    var n = Math.floor(Number(line));
+    return side === 'over' ? (n + 1) + ' o más' : n + ' o menos';
+  }
+
+  // La hora de saque. Los que ya juegan no la traen en la foto, asi que
+  // se cuenta hacia atras desde el minuto. Va con tilde (~21:00) porque
+  // es una cuenta y no un dato: el descanso no esta contado y puede
+  // bailar un cuarto de hora. Poner una hora exacta que no lo es seria
+  // la misma mentira que decir «0 %» cuando no se sabe.
+  function saqueHTML(m) {
+    if (m.kickoff_ts) return 'saca a las ' + hhmm(Number(m.kickoff_ts));
+    if (m.min == null) return '';
+    // Pasado el descanso hay que sumarle el cuarto de hora parado.
+    var mins = m.min + (m.min > 45 ? 15 : 0);
+    return 'empezó ~' + hhmm(Date.now() - mins * 60000);
+  }
+
+  // ---------- que opcion es la buena ----------
+  // Las tres con la misma vara: lo que paga la casa contra lo que tiene
+  // que pagar. «Tiene que pagar» es uno partido por la probabilidad.
+  //
+  // La variante va aparte porque se mide distinto: con n numeros a cuota
+  // c el beneficio es (c-n)/n y hay que acertar n/c, asi que lo suyo no
+  // es una cuota sino «cada uno tiene que pagar X o mas», que es n
+  // partido por la probabilidad de la franja. Es la ley de Diego.
+  function opcionesHTML(m) {
+    var ops = [];
+    (m.markets || []).forEach(function (k) {
+      if (k.p == null || !k.odd || k.type !== 'corners') return;
+      if (k.side !== 'over' && k.side !== 'under') return;
+      ops.push({ et: enteroDe(k.side, k.line), odd: Number(k.odd), p: k.p,
+                 min: 1 / k.p, ev: k.ev != null ? k.ev : k.p * k.odd - 1 });
+    });
+    // Una sola fila por lado: la casa publica la misma linea dos veces
+    // (dos casas) y verla repetida solo estorba al decidir.
+    var vistos = {}, unicas = [];
+    ops.sort(function (a, b) { return b.ev - a.ev; });
+    ops.forEach(function (o) { if (!vistos[o.et]) { vistos[o.et] = 1; unicas.push(o); } });
+
+    if (!unicas.length && !(m.exactRec && m.exactRec.length)) return '';
+
+    var h = '<h2>Qué es buena opción aquí</h2><div class="ops">';
+    unicas.forEach(function (o) {
+      var entra = o.odd > o.min;
+      h += '<div class="opf' + (entra ? ' si' : '') + '">'
+        + '<span class="oe">' + o.et + ' córners</span>'
+        + '<span class="od">paga <b>' + o.odd.toFixed(2) + '</b></span>'
+        + '<span class="om">el modelo <b>' + Math.round(o.p * 100) + ' %</b></span>'
+        + '<span class="on">tiene que pagar <b>' + o.min.toFixed(2) + '</b></span>'
+        + '<span class="ov ' + (entra ? 'si' : 'no') + '">'
+        + (entra ? 'ENTRA ' + (o.ev >= 0 ? '+' : '') + (o.ev * 100).toFixed(0) + ' %' : 'no llega')
+        + '</span></div>';
+    });
+
+    // LA VARIANTE: la franja de numeros exactos. Se ensena la de cuatro,
+    // que es la que mas se parece a como juega el.
+    var v = (m.exactRec || []).filter(function (x) { return x && x.nums && x.nums.length === 4; })[0]
+         || (m.exactRec || [])[1] || (m.exactRec || [])[0];
+    if (v && v.nums && v.nums.length) {
+      var cada = v.minOdd != null ? Number(v.minOdd) : (v.nums.length / v.P);
+      h += '<div class="opf var">'
+        + '<span class="oe">la variante: <b>' + v.nums.join(' · ') + '</b></span>'
+        + '<span class="od">' + v.nums.length + ' números</span>'
+        + '<span class="om">el modelo <b>' + Math.round(v.P * 100) + ' %</b></span>'
+        + '<span class="on">cada uno <b>' + cada.toFixed(2) + '</b> o más</span>'
+        + '<span class="ov ' + (m.exactPlan && m.exactPlan.ev > 0 ? 'si' : 'no') + '">'
+        + (m.exactPlan && m.exactPlan.nums
+            ? 'la casa sí los paga'
+            : 'la casa no publica exactos')
+        + '</span></div>';
+    }
+    h += '</div>';
+
+    // LA LINEA QUE RESUELVE. Sale de comparar; cuando ninguna llega, lo dice.
+    var mejor = unicas.filter(function (o) { return o.odd > o.min; })[0];
+    h += '<p class="laBuena">'
+      + (mejor
+          ? '<b>La buena: ' + mejor.et + ' córners.</b> Es la única de las dos líneas que '
+            + 'paga por encima de lo que necesita (' + mejor.odd.toFixed(2) + ' contra '
+            + mejor.min.toFixed(2) + ').'
+          : '<b>Ninguna de las dos líneas llega.</b> La casa paga menos de lo que haría falta '
+            + 'en las dos, así que aquí no se entra por línea'
+            + (v && v.nums ? '; si acaso, por la variante de números exactos.' : '.'))
+      + (v && v.nums
+          ? ' La variante de ' + v.nums.length + ' números necesita que <b>cada uno</b> pague '
+            + ((v.minOdd != null ? Number(v.minOdd) : v.nums.length / v.P)).toFixed(2)
+            + ' o más: con ' + v.nums.length + ' números a esa cuota ganarías el '
+            + Math.round(((v.minOdd != null ? Number(v.minOdd) : v.nums.length / v.P)
+                * 1.0 - v.nums.length) / v.nums.length * 100)
+            + ' % justo, que es el punto de no perder.'
+          : '')
+      + '</p>';
+    return h;
+  }
+
+  // ---------- cuantas posiciones ----------
+  // La ley de Diego, con sus numeros: con n numeros al mismo importe y
+  // cuota c cobras lo mismo salga el que salga, y entonces
+  //
+  //     beneficio = (c - n) / n        acierto minimo = n / c
+  //     o sea: cada numero tiene que pagar  c >= n / P
+  //
+  // El motor ya calculaba las cuatro bandas y las tenia enterradas en la
+  // pantalla de sectores. Aqui se ponen a decidir.
+  function bandasHTML(m) {
+    var R = (m.exactRec || []).filter(function (x) { return x && x.nums && x.nums.length; });
+    if (!R.length) return '';
+    // Las cuotas que la casa SI publica, numero a numero, si las hay.
+    var casa = {}, e = m.exactPlan, hayCasa = false;
+    if (e && e.nums && e.odds) {
+      e.nums.forEach(function (x, i) { casa[x] = Number(e.odds[i]); });
+      hayCasa = true;
+    }
+
+    var filas = R.map(function (b) {
+      var n = b.nums.length;
+      var pide = b.minOdd != null ? Number(b.minOdd) : (n / b.P);
+      // Lo que se gana si la casa paga justo lo que se le pide. Es
+      // (c - n) / n con c = n/P, que sale (1 - P) / P.
+      var gana = (pide - n) / n;
+      // Si tenemos cuotas de verdad para TODOS los numeros de la banda,
+      // se mide de verdad. Si falta una sola, no se mide: una banda con
+      // un numero sin cuota no se puede jugar entera.
+      var todas = b.nums.every(function (x) { return casa[x] != null; });
+      var medida = null;
+      if (todas) {
+        // Reparto proporcional a la inversa de la cuota: se cobra lo
+        // mismo salga el que salga, que es como juega.
+        var S = b.nums.reduce(function (a, x) { return a + 1 / casa[x]; }, 0);
+        medida = b.P / S - 1;      // ventaja real de la banda entera
+      }
+      return { n: n, nums: b.nums, P: b.P, pide: pide, gana: gana, medida: medida };
+    });
+
+    // LA REGLA. Con cuotas de verdad gana la de mas ventaja medida; sin
+    // ellas, la que menos le pide a la casa, que es la unica comparacion
+    // honesta cuando no se tienen las cuotas.
+    var conM = filas.filter(function (f) { return f.medida != null; });
+    var elegida = conM.length
+      ? conM.slice().sort(function (a, b) { return b.medida - a.medida; })[0]
+      : filas.slice().sort(function (a, b) { return a.pide - b.pide; })[0];
+
+    var h = '<h2>Cuántas posiciones</h2><div class="bandas">';
+    filas.forEach(function (f) {
+      var yo = f === elegida;
+      h += '<div class="bf' + (yo ? ' yo' : '') + '">'
+        + '<span class="bn">' + f.n + '<small>números</small></span>'
+        + '<span class="bl">' + f.nums.join(' · ') + '</span>'
+        + '<span class="bp">acierta <b>' + Math.round(f.P * 100) + ' %</b></span>'
+        + '<span class="bq">cada uno <b>' + f.pide.toFixed(2) + '</b> o más</span>'
+        + '<span class="bg">' + (f.gana >= 0 ? '+' : '') + Math.round(f.gana * 100)
+          + ' %<small>si entra</small></span>'
+        + (f.medida != null
+            ? '<span class="bm ' + (f.medida > 0 ? 'si' : 'no') + '">con las cuotas de ahora '
+              + (f.medida >= 0 ? '+' : '') + (f.medida * 100).toFixed(0) + ' %</span>'
+            : '<span class="bm sinq">sin cuotas exactas</span>')
+        + '</div>';
+    });
+    h += '</div>';
+
+    h += '<p class="laBuena"><b>La nuestra: ' + elegida.n + ' números ('
+      + elegida.nums.join(' · ') + ').</b> '
+      + (conM.length
+          ? 'Con las cuotas que la casa publica ahora es la de más ventaja: '
+            + (elegida.medida >= 0 ? '+' : '') + (elegida.medida * 100).toFixed(0) + ' %.'
+          : 'La casa no publica cuotas de número exacto en este partido, así que se elige '
+            + 'por lo que menos le pide: <b>cada número tiene que pagar '
+            + elegida.pide.toFixed(2) + ' o más</b>. Míralo en bet365; si uno solo de los '
+            + elegida.n + ' se queda por debajo, esa banda ya no vale y hay que bajar.')
+      + ' <b>Y el precio de mojarse:</b> acierta '
+      + Math.round(elegida.P * 100) + ' de cada 100, o sea que falla '
+      + (100 - Math.round(elegida.P * 100)) + '. La banda de ' + filas[filas.length - 1].n
+      + ' acierta ' + Math.round(filas[filas.length - 1].P * 100) + ' pero solo gana '
+      + Math.round(filas[filas.length - 1].gana * 100) + ' %. No es mejor ni peor: es cuánto '
+      + 'aguantas fallar.</p>';
+    return h;
+  }
+
+  // Ficha de un partido que todavia no ha empezado. De uno que no juega
+  // NO hay ventaja que medir: no hay minuto, no hay cornes y casi nunca
+  // hay cuota en vivo. Solo hay previa, y se dice que es previa.
+  function fichaPrevia(u, puesto) {
+    var h = '<div class="pz previa"><header>'
+      + '<div class="q"><span class="top5">#' + puesto + '</span> '
+      + esc(u.home) + ' – ' + esc(u.away)
+      + ' <span style="color:var(--tenue);font-weight:400">· ' + esc(u.league_name || '')
+      + ' · ' + saqueHTML(u) + '</span></div>'
+      + '<div class="heroe"><small>el modelo espera</small>'
+      + (u.pre_corners == null ? '—' : Number(u.pre_corners).toFixed(1)) + '</div>'
+      + '<div class="heroe"><small>goles</small>'
+      + (u.pre_goals == null ? '—' : Number(u.pre_goals).toFixed(1)) + '</div>'
+      + '<div class="heroe"><small>alineaciones</small>'
+      + (u.has_lineups ? 'sí' : 'aún no') + '</div>'
+      + '</header><div class="cont">';
+    var c = u.pre_corners == null ? null : Number(u.pre_corners);
+    if (c != null) {
+      // En enteros, que es como se juega.
+      var n = Math.round(c);
+      h += '<p class="li">En números enteros: el modelo apunta a <b>' + n + ' córners</b>. '
+        + 'La franja de cuatro alrededor sería <b>' + (n - 1) + ' · ' + n + ' · ' + (n + 1)
+        + ' · ' + (n + 2) + '</b>, y para no perder cada uno tendría que pagar <b>'
+        + (4 / 0.5).toFixed(0) + '</b> o más si la franja cubriera la mitad de las veces. '
+        + 'El reparto fino no existe hasta que empieza y hay córners que contar.</p>';
+    }
+    h += '<p class="li"><b>Esto es previa, no ventaja.</b> Sin minuto ni córners no hay nada '
+      + 'que comparar con la casa: estos cinco son los que antes sacan de entre los que más '
+      + 'sabemos, para que puedas planear, no para entrar ya.</p>';
+    return h + enlaces(u) + '</div></div>';
+  }
+
   function fichaPrecio(m) {
     var P = precio(m);
     if (!P) return '';
     var h = '<div class="pz"><header>'
-      + '<div class="q">' + esc(m.home) + ' – ' + esc(m.away)
+      + '<div class="q">' + (m.__top ? '<span class="top5">#' + m.__top + '</span> ' : '')
+      + esc(m.home) + ' – ' + esc(m.away)
       + ' <span style="color:var(--tenue);font-weight:400">· ' + esc(m.league || '')
-      + (m.min != null ? " · " + m.min + "'" : '') + '</span></div>'
+      + ' · ' + saqueHTML(m)
+      + (m.min != null ? " · minuto " + m.min : '') + '</span></div>'
       + '<div class="heroe"><small>el mercado espera</small>' + P.mu.toFixed(2) + '</div>'
       + '<div class="heroe"><small>tu modelo espera</small>'
       + (P.modelo == null ? '—' : P.modelo.toFixed(2)) + '</div>'
@@ -1727,7 +2001,9 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
             + '<b>no una cuota que puedas pulsar</b>.'
           : '. Con líneas pegadas el precio de un número sale restando, sin suponer nada.')
       + '</p>';
-    h += escalera(P);
+    // Los enlaces AQUI, dentro de la ficha de precios: «con enlace
+    // directo». Antes habia que irse a otra pestana para abrir la casa.
+    h += opcionesHTML(m) + bandasHTML(m) + enlaces(m) + escalera(P);
     return h + '</div></div>';
   }
 
@@ -2617,11 +2893,52 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
           + 'córners en ninguno, y sin cuota no hay precio que deducir: lo que sale de '
           + 'aquí es el mercado despejado, no una invención del modelo.</div>';
       }
-      return '<p class="li" style="margin:0 0 14px">A cuánto sale cada número de córners, '
-        + 'partido por partido. Arriba, lo que el mercado espera de total, despejado de sus '
-        + 'propias cuotas. Debajo, ese total repartido número a número, y al lado los '
-        + 'más/menos que la casa sí publica, con lo que debería pagar cada uno.</p>'
-        + L.map(fichaPrecio).join('');
+      // LOS CINCO QUE MAS VENTAJA TIENEN, medida: la mejor de sus lineas
+      // publicadas contra lo que esa linea tendria que pagar.
+      var conv = L.map(function (m) {
+        var mx = -9;
+        (m.markets || []).forEach(function (k) {
+          if (k.p == null || !k.odd) return;
+          var ev = k.ev != null ? k.ev : k.p * k.odd - 1;
+          if (ev > mx) mx = ev;
+        });
+        return { m: m, ev: mx };
+      }).sort(function (a, b) { return b.ev - a.ev; });
+      var cinco = conv.slice(0, 5);
+      cinco.forEach(function (x, i) { x.m.__top = i + 1; });
+      var resto = conv.slice(5);
+      resto.forEach(function (x) { x.m.__top = 0; });
+
+      // Los que estan por empezar: los cinco que antes sacan de entre los
+      // que mas sabemos. De un partido que no juega NO hay ventaja que
+      // medir, asi que no se ordena por ventaja: seria inventada.
+      var up = ((D && D.upcoming) || []).slice().sort(function (a, b) {
+        return ((b.has_lineups ? 1 : 0) - (a.has_lineups ? 1 : 0))
+            || ((a.kickoff_ts || 0) - (b.kickoff_ts || 0));
+      }).slice(0, 5);
+
+      var h = '<p class="li" style="margin:0 0 14px">A cuánto sale cada número de córners, '
+        + 'partido por partido. <b>Los números son enteros</b>: una línea de 9,5 no existe en '
+        + 'el campo, lo que existe es «10 o más» y «9 o menos», y así se escribe aquí. '
+        + 'Arriba de cada ficha, lo que el mercado espera de total, despejado de sus propias '
+        + 'cuotas; debajo, ese total repartido número a número.</p>';
+
+      h += '<h2>Jugando ahora · los ' + cinco.length + ' de más ventaja</h2>'
+        + cinco.map(function (x) { return fichaPrecio(x.m); }).join('');
+
+      if (up.length) {
+        h += '<h2>Por empezar · los ' + up.length + ' que antes sacan</h2>'
+          + up.map(function (u, i) { return fichaPrevia(u, i + 1); }).join('');
+      } else {
+        h += '<h2>Por empezar</h2><div class="vacia">No hay ninguna previa cargada. '
+          + 'La previa se arma a las 07:00 y estudia los partidos del día.</div>';
+      }
+
+      if (resto.length) {
+        h += '<h2>Los otros ' + resto.length + ' que tienen cuota</h2>'
+          + resto.map(function (x) { return fichaPrecio(x.m); }).join('');
+      }
+      return h;
     } },
     lista: { t: 'La lista', n: function () { return oportunidades().length; }, pinta: function () {
       var L = filtradas(), todo = oportunidades();
