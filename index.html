@@ -1061,6 +1061,10 @@ button.jok:hover{background:var(--magenta);color:#fff}
 /* El aviso de suelto contra bloque: es una confusion que cuesta dinero. */
 .avisoBloque{background:#eef4fb;border:1px solid var(--frio);border-radius:10px;
              padding:9px 12px;margin:0 0 10px;line-height:1.5}
+/* La pista de la tecla: discreta, pero que se sepa que esta. */
+.chips .tecla{font-family:var(--dato);font-size:.68rem;color:var(--tenue);
+              border:1px solid var(--raya);border-radius:5px;padding:1px 6px;
+              margin-left:4px}
 </style>
 </head>
 <body>
@@ -1300,6 +1304,9 @@ button.jok:hover{background:var(--magenta);color:#fff}
   function misLigas() { return (D && D.sigo) || []; }
 
   function pasaFiltro(m) {
+    // SOLO LOS MIOS, a una tecla. Cuando hay dinero puesto en algo,
+    // encontrarlo no puede costar tres toques.
+    if (FILT.mios === '1') return !!(POS && POS[m.id]);
     // UN PARTIDO CON DINERO PUESTO NO SE ESCONDE NUNCA. Filtre lo que
     // filtre: tapar de la vista el partido donde hay cien euros es lo peor
     // que puede hacer un filtro.
@@ -1314,6 +1321,20 @@ button.jok:hover{background:var(--magenta);color:#fff}
     return true;
   }
   function filtra(ms) { return ms.filter(pasaFiltro); }
+
+  // La tecla S. No responde mientras escribe en una casilla: si no,
+  // teclear «Senegal» en un buscador encenderia y apagaria el filtro
+  // cuatro veces.
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var n = e.target && e.target.tagName;
+    if (n && /^(INPUT|TEXTAREA|SELECT)$/.test(n)) return;
+    if (e.key !== 's' && e.key !== 'S') return;
+    if (!Object.keys(POS || {}).length) return;
+    FILT.mios = FILT.mios === '1' ? '' : '1';
+    guardar('tl.filtro', FILT);
+    try { render(); } catch (err) {}
+  });
 
   function chipsHTML() {
     var L = misLigas(), tot = vivos().length, ven = filtra(vivos()).length;
@@ -1330,6 +1351,12 @@ button.jok:hover{background:var(--magenta);color:#fff}
       + c('gen', '', 'Los dos', !FILT.gen)
       + c('gen', 'Masculino', 'Masculino', FILT.gen === 'Masculino')
       + c('gen', 'Femenino', 'Femenino', FILT.gen === 'Femenino')
+      + (Object.keys(POS || {}).length
+          ? '<span class="ct">M\u00edos</span>'
+            + c('mios', '1', 'Los que sigo \u00b7 ' + Object.keys(POS).length, FILT.mios === '1')
+            + c('mios', '', 'Todos', FILT.mios !== '1')
+            + '<span class="tecla">tecla S</span>'
+          : '')
       + '<span class="cn">' + ven + ' de ' + tot + '</span>'
       + '</div>';
   }
@@ -4065,7 +4092,15 @@ button.jok:hover{background:var(--magenta);color:#fff}
   // mismo nombre y una desaparece sin avisar.
   function pulso() {
     PROXPULSO = Date.now() + 60000;
-    return fetch(DESPIERTO + '?t=' + Date.now(), { cache: 'no-store' })
+    // LOS QUE TIENE EN JUEGO. Sin esta lista el worker no puede seguir
+    // nada con el tablero cerrado: sus posiciones viven aqui, no alli.
+    // Van SOLO los identificadores de partido; los numeros, importes y
+    // cuotas no salen de este navegador.
+    var mios = '';
+    try { mios = Object.keys(POS || {}).slice(0, 20).join(','); } catch (e) {}
+    return fetch(DESPIERTO + '?t=' + Date.now()
+                 + (mios ? '&sigo=' + encodeURIComponent(mios) : ''),
+                 { cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (j) { PULSOOK = !!(j && j.ok); })
       .catch(function () { PULSOOK = false; })
