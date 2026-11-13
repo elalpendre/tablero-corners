@@ -946,6 +946,40 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
   .opf .oe{grid-column:1/span 2;min-width:0}
   .opf .ov{grid-column:1/span 2;justify-self:start;margin-left:0}
 }
+/* ---- LA BARRA QUE FALTABA ---- */
+/* La tenia escondida a proposito, por limpieza. En un carrusel de adorno
+   esta bien; aqui el ultimo trozo quedaba cortado y no habia nada que
+   dijera que seguia habiendo cosas, asi que parecia un fallo. */
+.viva{scrollbar-width:thin;scrollbar-color:#b9c6d8 transparent;
+      padding-bottom:12px}
+.viva::-webkit-scrollbar{display:block;height:8px}
+.viva::-webkit-scrollbar-track{background:#eceff5;border-radius:999px}
+.viva::-webkit-scrollbar-thumb{background:#b9c6d8;border-radius:999px}
+.viva::-webkit-scrollbar-thumb:hover{background:var(--tenue)}
+
+/* ---- el reloj de la oportunidad ---- */
+/* «se pasa el tiempo y pierdes la oportunidad». Verde recien salida,
+   ambar pasados cuatro minutos, gris pasados diez: a esas alturas la
+   casa ya ha movido la cuota y lo que pone en pantalla es pasado. */
+.reloj{display:inline-block;padding:2px 9px;border-radius:999px;
+       font-family:var(--dato);font-size:.7rem;white-space:nowrap;
+       border:1px solid var(--raya)}
+.reloj.fresco{background:var(--cespedf);border-color:var(--cesped);
+              color:var(--cesped);font-weight:700}
+.reloj.medio{background:var(--avisof);border-color:var(--aviso);color:var(--aviso)}
+.reloj.viejo{background:#f1f3f7;color:var(--tenue)}
+
+/* ---- el aviso de la media de la liga ---- */
+.mediaLiga{background:var(--avisof);border:1px solid var(--aviso);
+           border-left:4px solid var(--aviso);border-radius:10px;
+           padding:11px 13px;margin:0 0 11px;font-size:.85rem;line-height:1.55}
+.mediaLiga b{color:var(--aviso)}
+/* ---- la cuenta en euros de cada banda ---- */
+.bf .beu{flex-basis:100%;font-size:.78rem;color:var(--tenue);
+         padding-top:5px;margin-top:2px;border-top:1px dashed var(--raya)}
+.bf .beu b{color:var(--cesped);font-size:.95rem}
+.bf .beu i{font-style:normal;color:var(--tenue)}
+.bf.yo .beu b{color:var(--cesped)}
 </style>
 </head>
 <body>
@@ -1009,6 +1043,10 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
   // Vive en el navegador y no sale de aqui: son sus apuestas, no datos.
   var POS = leer('tl.pos', {});
   var CIERRE_MIN = 0.05;   // desde que margen avisa
+  // Lo que Diego pone en CADA numero. Su ejemplo: «a 20 la posicion».
+  // Se guarda porque es suyo y porque de aqui salen todas las cifras en
+  // euros de la pantalla.
+  var PORNUM = leer('tl.pornum', 20);
   var CERRADOS = {};       // para no repetir el aviso del mismo partido
   // Que partidos quiero ver. Se guarda: si filtro a mis ligas y recargo,
   // sigue filtrado.
@@ -1559,6 +1597,29 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
   // Una fila por mercado de cada partido analizado, mas una fila por franja
   // de corners entera. La ventaja manda el orden: lo que mas paga de mas,
   // arriba. Nada de mirar partido por partido.
+  // ---------- cuanto lleva abierta cada oportunidad ----------
+  // «se pasa el tiempo y pierdes la oportunidad». Una entrada con
+  // ventaja no vive para siempre: la casa mueve la cuota, caen cornes y
+  // se cierra. La pantalla la pintaba igual el primer segundo que diez
+  // minutos despues.
+  //
+  // Se mide desde que se vio por PRIMERA VEZ EN ESTA SESION, y se dice
+  // asi. Si se abre la pagina a mitad, poner «lleva 1 min» a algo que
+  // llevaba veinte seria mentir con cara de precision.
+  var DESDE = {};
+
+  function edadOp(id) {
+    if (!DESDE[id]) DESDE[id] = Date.now();
+    return Date.now() - DESDE[id];
+  }
+
+  function relojHTML(id) {
+    var ms = edadOp(id), min = Math.floor(ms / 60000);
+    var cl = min >= 10 ? 'viejo' : min >= 4 ? 'medio' : 'fresco';
+    var t = min < 1 ? 'recién' : 'lleva ' + min + ' min';
+    return '<span class="reloj ' + cl + '">' + t + '</span>';
+  }
+
   function oportunidades() {
     var out = [];
     analizados().forEach(function (m) {
@@ -1921,6 +1982,14 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
     var h = '<h2>Cuántas posiciones</h2><div class="bandas">';
     filas.forEach(function (f) {
       var yo = f === elegida;
+      // LA CUENTA EN EUROS, que es la que se paga en el banco. Con n
+      // numeros al mismo importe e y cuota c: pones e x n, cobras e x c
+      // (solo entra uno) y te queda e x (c - n). Cuando la casa no
+      // publica cuota se usa la MINIMA y se dice, para que la cifra sea
+      // la peor de las que valen la pena y nunca una inflada.
+      var cuota = f.pide;
+      var pones = PORNUM * f.n, cobras = PORNUM * cuota;
+      var delBanco = BANCO > 0 ? pones / BANCO : 0;
       h += '<div class="bf' + (yo ? ' yo' : '') + '">'
         + '<span class="bn">' + f.n + '<small>números</small></span>'
         + '<span class="bl">' + f.nums.join(' · ') + '</span>'
@@ -1932,6 +2001,10 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
             ? '<span class="bm ' + (f.medida > 0 ? 'si' : 'no') + '">con las cuotas de ahora '
               + (f.medida >= 0 ? '+' : '') + (f.medida * 100).toFixed(0) + ' %</span>'
             : '<span class="bm sinq">sin cuotas exactas</span>')
+        + '<span class="beu">a ' + PORNUM + ' € pones <b>' + eur(pones)
+          + '</b> y cobras <b>' + eur(cobras) + '</b>'
+          + ' <i>(' + Math.round(delBanco * 100) + ' % de tu banco'
+          + (delBanco > 0.10 ? ' · es mucho' : '') + ')</i></span>'
         + '</div>';
     });
     h += '</div>';
@@ -1951,12 +2024,42 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
       + ' acierta ' + Math.round(filas[filas.length - 1].P * 100) + ' pero solo gana '
       + Math.round(filas[filas.length - 1].gana * 100) + ' %. No es mejor ni peor: es cuánto '
       + 'aguantas fallar.</p>';
+    // EL BOTON. Un toque y pasa a «Mis posiciones», que es lo que la
+    // alarma de cerrar vigila. Pregunta una sola cosa: a cuanto se lo
+    // pago la casa. Es lo unico que el sistema no puede saber, porque
+    // eso pasa en bet365 y no aqui.
+    h += '<div class="apu"><button type="button" onclick="window.tlPos.jugado(\''
+      + esc(String(m.id)) + '\',\'' + elegida.nums.join('-') + '\','
+      + elegida.pide.toFixed(2) + ')">✔ Lo jugué</button>'
+      + '<span>y la alarma de cerrar empieza a vigilarlo</span></div>';
     return h;
   }
 
   // Ficha de un partido que todavia no ha empezado. De uno que no juega
   // NO hay ventaja que medir: no hay minuto, no hay cornes y casi nunca
   // hay cuota en vivo. Solo hay previa, y se dice que es previa.
+  // ---------- esto es la media de la liga, no una prevision ----------
+  // Dos partidos por empezar con el MISMO numero a quince decimales no es
+  // casualidad: es la media de la liga, porque de esos equipos todavia no
+  // hay partidos guardados.
+  //
+  // Medido el 13 de noviembre:
+  //     Argentina - Uruguay     7.470588235294118
+  //     Brazil U20 - Peru U20   7.470588235294118
+  //
+  // Con ese numero salian ventajas de +59 % en «menos de 6,5». No
+  // existen: el mercado sabe que son Argentina y Uruguay, y nosotros
+  // estabamos usando la media de todos los amistosos del mundo.
+  function esMediaDeLiga(u) {
+    if (u.pre_corners == null) return false;
+    var n = 0;
+    ((D && D.upcoming) || []).forEach(function (x) {
+      if (x.pre_corners != null
+          && Math.abs(Number(x.pre_corners) - Number(u.pre_corners)) < 1e-9) n++;
+    });
+    return n > 1;
+  }
+
   function fichaPrevia(u, puesto) {
     var h = '<div class="pz previa"><header>'
       + '<div class="q"><span class="top5">#' + puesto + '</span> '
@@ -1979,6 +2082,14 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
         + ' · ' + (n + 2) + '</b>, y para no perder cada uno tendría que pagar <b>'
         + (4 / 0.5).toFixed(0) + '</b> o más si la franja cubriera la mitad de las veces. '
         + 'El reparto fino no existe hasta que empieza y hay córners que contar.</p>';
+    }
+    if (esMediaDeLiga(u)) {
+      h += '<div class="mediaLiga"><b>Ojo: este número no es de estos equipos.</b> '
+        + 'Hay otro partido por empezar con <b>exactamente</b> el mismo valor '
+        + '(' + Number(u.pre_corners).toFixed(6) + '…), así que lo que ves es la media de '
+        + 'la liga, porque de estos dos equipos todavía no hay partidos guardados. '
+        + 'Cualquier ventaja que salga de aquí es contra la media del mundo, no contra '
+        + 'estos equipos: <b>el mercado sabe más que nosotros en este partido</b>.</div>';
     }
     h += '<p class="li"><b>Esto es previa, no ventaja.</b> Sin minuto ni córners no hay nada '
       + 'que comparar con la casa: estos cinco son los que antes sacan de entre los que más '
@@ -2695,6 +2806,34 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
       var n = document.getElementById('pNums');
       if (n) n.focus();
     },
+    // Desde el boton «Lo jugue» de una banda. Ya sabe el partido, los
+    // numeros y lo que pone en cada uno: solo falta la cuota, que esa la
+    // pone la casa.
+    jugado: function (fid, nums, sugerida) {
+      var ns = String(nums).split('-').map(Number).filter(function (x) { return !isNaN(x); });
+      if (!ns.length) return;
+      var r = prompt('¿A cuánto te los paga bet365?\n\n'
+        + 'Números: ' + ns.join(', ') + '\n'
+        + 'Pones ' + PORNUM + ' € en cada uno.\n'
+        + 'Para no perder a la larga necesitas ' + sugerida + ' o más.',
+        String(sugerida));
+      if (r == null) return;              // le dio a cancelar
+      var c = Number(String(r).replace(',', '.'));
+      if (!(c > 1)) { alert('Esa cuota no vale. Tiene que ser mayor que 1.'); return; }
+      var m = null;
+      vivos().forEach(function (x) { if (String(x.id) === String(fid)) m = x; });
+      POS[fid] = {
+        partido: m ? (m.home + ' - ' + m.away) : String(fid),
+        liga: m ? m.league : '', ts: Date.now(),
+        puestas: ns.map(function (n) { return { n: n, e: PORNUM, c: c }; }),
+      };
+      guardar('tl.pos', POS);
+      try { render(); } catch (e) {}
+      alert('Apuntado: ' + ns.length + ' números a ' + c.toFixed(2) + '.\n'
+        + 'Pusiste ' + eur(PORNUM * ns.length) + ' y cobrarías ' + eur(PORNUM * c) + '.\n\n'
+        + 'La alarma de cerrar ya lo vigila.');
+    },
+
     anadir: function () {
       var fid = (document.getElementById('pFid') || {}).value;
       var ns = String((document.getElementById('pNums') || {}).value || '')
@@ -2975,7 +3114,7 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
 
       h += '<table class="lista"><tr><th>Partido</th><th>Min</th><th>Que jugar</th>'
         + '<th class="r">Prob</th><th class="r">Paga</th><th class="vent">Ventaja</th>'
-        + '<th class="r">Pones</th><th>Casa</th></tr>';
+        + '<th class="r">Pones</th><th>Abierta</th><th>Casa</th></tr>';
 
       L.slice(0, 60).forEach(function (o) {
         var m = o.m, si = o.ev >= EV_MIN;
@@ -2993,6 +3132,9 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
           var im = importe(o.k);
           pone = im ? eur(im.i) + (im.topado ? ' *' : '') : '-';
         }
+        // El reloj va en su propia celda, justo antes de la casa: es lo
+        // ultimo que se mira antes de decidir si todavia merece la pena.
+        o.__reloj = relojHTML(o.id);
         h += '<tr class="' + cls + '">'
           + '<td><div class="par">' + esc(m.home) + '<br>' + esc(m.away) + '</div>'
           + '<div class="lug">' + esc(m.league) + ' / ' + m.sH + '-' + m.sA
@@ -3004,6 +3146,7 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
           + '<td class="vent ' + (si ? 'si' : 'no') + '">'
           + (o.ev == null ? '-' : (o.ev >= 0 ? '+' : '') + (o.ev * 100).toFixed(1) + ' %') + '</td>'
           + '<td class="r">' + pone + '</td>'
+          + '<td>' + o.__reloj + '</td>'
           + '<td><a class="casa' + (si ? '' : ' gris') + '" href="' + casaURL()
           + '" target="_blank" rel="noopener">Ir</a></td>'
           + '</tr>';
