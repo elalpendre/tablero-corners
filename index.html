@@ -733,6 +733,148 @@ h2{font-family:var(--cartel);font-size:1.12rem;letter-spacing:.14em;
 @media (prefers-reduced-motion:reduce){
   h1,.alto::after,.cf.pico .cn,.cierra{animation:none}
 }
+
+/* ======================================================================
+   FONDO CLARO Y LIMPIO. Ultima capa: gana a la piel oscura y al tono.
+   El color se queda; el brillo se cambia por tinta, porque un halo solo
+   funciona sobre oscuro y sobre papel es suciedad alrededor de la letra.
+   Los contrastes estan calculados, no elegidos a ojo: el peor de todos
+   es 5,02:1 sobre el minimo de 4,5 que pide la norma.
+   ====================================================================== */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"]{
+  --fondo:#f7f8fb; --tabla:#ffffff; --tinta:#141a22; --tenue:#5b6775;
+  --raya:#e3e7ee;
+  --cesped:#00804a; --cespedf:#e6f7ee;      /* verde legible sobre blanco */
+  --aviso:#8a5200; --avisof:#fdf2df;
+  --rojo:#c62130;
+  --frio:#0a6fa8;
+  --sube:#00804a; --baja:#c62130;
+  --oro:#8a5200; --orof:#ffc62e;            /* oro: tinta oscura, relleno vivo */
+  --magenta:#b5137f;
+  /* Sin halos de color: sombras de verdad, grises y suaves. */
+  --luzv:0 2px 10px rgba(0,128,74,.18);
+  --luza:0 2px 10px rgba(138,82,0,.16);
+  --luzr:0 2px 12px rgba(198,33,48,.28);
+  color-scheme:light;
+}
+body{background:var(--fondo);background-attachment:scroll}
+
+/* ---- el titulo: color, sin tubo ---- */
+h1{
+  color:var(--tinta);text-shadow:none;animation:none;filter:none;
+  background:linear-gradient(92deg,#b5137f,#0a6fa8 48%,#00804a);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+/* El rail de luces que corrian se queda quieto: una regla de color, que
+   es lo mismo sin mareo. */
+.alto::after{
+  background-image:linear-gradient(90deg,#b5137f,#0a6fa8 48%,#00804a);
+  background-size:auto;height:3px;border-radius:999px;opacity:.9;
+  animation:none;bottom:6px;
+}
+
+/* ---- cajas de papel ---- */
+.caja{
+  background:var(--tabla);
+  box-shadow:0 1px 2px rgba(20,26,34,.05),0 6px 18px rgba(20,26,34,.07);
+  border:1px solid var(--raya);
+}
+.caja::before{display:none}
+.caja.valor{border-left:5px solid var(--cesped);box-shadow:0 6px 18px rgba(0,128,74,.14)}
+.caja.ojo{border-left:5px solid var(--aviso);box-shadow:0 6px 18px rgba(138,82,0,.12)}
+.eq{color:var(--tinta);text-shadow:none}
+
+/* ---- la ventaja: grande y en tinta de color ---- */
+.op{background:#fbfcfe;border-color:var(--raya)}
+.op.top{background:var(--cespedf);border-color:var(--cesped);box-shadow:none}
+.op .v{color:var(--tenue)}
+.op .v.si{color:var(--cesped);background:none;-webkit-text-fill-color:var(--cesped);
+          filter:none;text-shadow:none}
+.op .bar{background:#eceff5}
+.op .bar i{background:linear-gradient(90deg,#2aa7f0,#00c46a);box-shadow:none}
+
+/* ---- LAS FICHAS, sobre blanco ---- */
+.cf{background:#fbfcfe;border:1px solid var(--raya)}
+.cf .cn{
+  background:#eef2f8;color:var(--frio);
+  border:2px dashed #b9c6d8;
+  box-shadow:0 1px 3px rgba(20,26,34,.12);
+  text-shadow:none;
+}
+/* La del mas probable: relleno de oro vivo con tinta oscura encima.
+   10,49:1, que es de sobra. */
+.cf.pico .cn{
+  background:var(--orof);color:#2a1d00;border-color:#d79f12;
+  box-shadow:0 2px 8px rgba(214,159,18,.45);animation:none;
+}
+.cf.pico{background:#fffaed}
+.cf.pico .cn{text-shadow:none}
+/* Las suyas: fucsia pleno con blanco encima. 6,24:1. */
+.cf.mio .cn{
+  background:var(--magenta);color:#fff;border-color:#8e0f63;
+  box-shadow:0 2px 8px rgba(181,19,127,.35);
+}
+.cf.mio{background:#fdeef8;border-color:var(--magenta)}
+.cf .cb{background:#eceff5;box-shadow:none}
+.cf .cb i{background:linear-gradient(90deg,#2aa7f0,#0a6fa8);box-shadow:none}
+.cf.pico .cb i{background:linear-gradient(90deg,var(--orof),#00c46a);box-shadow:none}
+.cf .cp{color:var(--tinta)}
+.cf .cq b{color:var(--frio)}
+.cf .cc{background:#fff;border-color:var(--raya);color:var(--tenue)}
+/* ENTRA: verde pleno con blanco. 5,02:1, y ademas lleva la palabra. */
+.cf .cc.si{background:var(--cesped);border-color:var(--cesped);color:#fff;
+           box-shadow:none}
+.cf .cmio{background:var(--magenta);color:#fff;box-shadow:none}
+.cf .cpico{color:var(--aviso)}
+.cuenta{background:#fbfcfe;border-color:var(--raya)}
+.cuenta b{color:var(--aviso);text-shadow:none}
+.ritmo b{color:var(--aviso);text-shadow:none}
+
+/* ---- la cinta: tarjetas de papel, sin panel ni barrido ---- */
+.viva{background:none;box-shadow:none;border-radius:0;padding:8px 0 9px;
+      border-bottom:1px solid var(--raya)}
+.viva::after{display:none}
+.vp{background:var(--tabla);border-color:var(--raya);
+    box-shadow:0 1px 3px rgba(20,26,34,.07)}
+.v-gol{border-left-color:var(--cesped);box-shadow:0 1px 3px rgba(20,26,34,.07)}
+.v-corner{border-left-color:var(--frio);box-shadow:0 1px 3px rgba(20,26,34,.07)}
+.v-roja{border-left-color:var(--rojo);box-shadow:0 1px 3px rgba(20,26,34,.07)}
+.v-gol b{color:var(--cesped);text-shadow:none}
+.v-corner b{color:var(--frio);text-shadow:none}
+.v-roja b{color:var(--rojo);text-shadow:none}
+.vp.mio{background:#fdeef8;border-color:var(--magenta)}
+.vmudo{color:var(--tenue);text-shadow:none}
+
+/* ---- pestanas, tablas y el resto ---- */
+.pestanas{background:rgba(247,248,251,.95)}
+.pestanas button[aria-selected=true]{color:var(--cesped);
+  border-bottom-color:var(--cesped);text-shadow:none}
+.pestanas .cuantos{background:#e9edf4;color:var(--tinta)}
+.pestanas button[aria-selected=true] .cuantos{background:var(--cesped);color:#fff;
+  box-shadow:none}
+h2{color:var(--aviso);text-shadow:none}
+table{background:var(--tabla)}
+th{color:var(--aviso)}
+.latido{background:var(--tabla);box-shadow:0 1px 3px rgba(20,26,34,.06)}
+button.onon{background:var(--cesped);color:#fff;box-shadow:none}
+button.chip{background:var(--tabla)}
+button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
+               box-shadow:none}
+.apu button{border-color:var(--magenta);background:#fdeef8;color:var(--magenta)}
+.apu button:hover{background:var(--magenta);color:#fff;box-shadow:none}
+.apu.ya{color:var(--magenta);background:#fdeef8}
+.banco,.grafico,.selv button,.velasel button,.tfs button,.fig{background:var(--tabla)}
+.banco input[type=number]{background:var(--tabla);color:var(--tinta)}
+.pista{background:#eceff5}
+.pista i{background:linear-gradient(90deg,#2aa7f0,#00c46a)}
+.vacia{background:var(--tabla)}
+.firma b{color:var(--aviso);text-shadow:none}
+
+/* EL UNICO QUE SIGUE PARPADEANDO. Se queda porque avisa de dinero: una
+   ventana de cierre que no ves no vuelve. Todo lo demas esta quieto. */
+.cierra{background:var(--rojo);color:#fff;box-shadow:var(--luzr);
+        animation:late 1.3s ease-in-out infinite}
+@keyframes late{0%,100%{opacity:1}50%{opacity:.6}}
 </style>
 </head>
 <body>
