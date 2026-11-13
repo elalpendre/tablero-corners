@@ -980,6 +980,14 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
 .bf .beu b{color:var(--cesped);font-size:.95rem}
 .bf .beu i{font-style:normal;color:var(--tenue)}
 .bf.yo .beu b{color:var(--cesped)}
+/* ---- lo que llevo jugado ---- */
+.heroe.bien{color:var(--cesped)}
+.heroe.mal{color:var(--rojo)}
+tr.j-gano td{background:var(--cespedf)}
+tr.j-perdio td{background:#fdeef0}
+/* Sin dato NO es perdida: se pinta en gris y queda fuera de las cuentas. */
+tr.j-nodato td{background:#f1f3f7;color:var(--tenue)}
+tr.j-nodato b{color:var(--tenue)}
 </style>
 </head>
 <body>
@@ -1047,6 +1055,18 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
   // Se guarda porque es suyo y porque de aqui salen todas las cifras en
   // euros de la pantalla.
   var PORNUM = leer('tl.pornum', 20);
+  // LO QUE LLEVA JUGADO, ya cerrado. Vive en su navegador igual que las
+  // posiciones abiertas: son sus apuestas, no datos del sistema.
+  var JUGADAS = leer('tl.jugadas', []);
+  // LO ULTIMO QUE VIMOS de los partidos que tiene apuntados. Medido en el
+  // historico del worker: 17 de 23 partidos cerrados no tienen cornes
+  // guardados, porque son partidos que el motor nunca estudio. Si uno de
+  // esos es suyo, su jugada se quedaria en «sin dato» para siempre.
+  //
+  // Esto NO decide la apuesta —un recuento del minuto 84 no es el final y
+  // darlo por bueno seria inventar un resultado— pero al menos le dice
+  // por donde iba, y se dice que es eso.
+  var ULTV = leer('tl.ultvisto', {});
   var CERRADOS = {};       // para no repetir el aviso del mismo partido
   // Que partidos quiero ver. Se guarda: si filtro a mis ligas y recargo,
   // sigue filtrado.
@@ -2035,6 +2055,92 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
     return h;
   }
 
+  // ---------- lo que llevo jugado ----------
+  function jugadasHTML() {
+    if (!JUGADAS.length) {
+      return '<h2>Lo que llevo jugado</h2><div class="vacia">Todavía no hay ninguna jugada '
+        + 'cerrada. En cuanto marques <b>Lo jugué</b> en un partido y ese partido termine, '
+        + 'aparece aquí con lo que ganaste o perdiste, y empieza a contar para la '
+        + 'estadística.</div>';
+    }
+    var c = cuentasJugadas(JUGADAS);
+    var h = '<h2>Lo que llevo jugado</h2><div class="pz"><header>'
+      + '<div class="heroe"><small>jugadas</small>' + c.n + '</div>'
+      + '<div class="heroe"><small>acertadas</small>' + c.aciertos + '</div>'
+      + '<div class="heroe"><small>acierto</small>'
+      + (c.acierto == null ? '—' : Math.round(c.acierto * 100) + ' %') + '</div>'
+      + '<div class="heroe ' + (c.gano >= 0 ? 'bien' : 'mal') + '"><small>ganado</small>'
+      + (c.gano >= 0 ? '+' : '') + Math.round(c.gano) + ' €</div>'
+      + '<div class="heroe ' + (c.gano >= 0 ? 'bien' : 'mal') + '"><small>rendimiento</small>'
+      + (c.rend == null ? '—' : (c.rend >= 0 ? '+' : '') + Math.round(c.rend * 100) + ' %') + '</div>'
+      + '</header><div class="cont">';
+
+    h += '<p class="li">Puesto <b>' + eur(c.puso) + '</b>, cobrado <b>' + eur(c.cobro)
+      + '</b>. El rendimiento es lo ganado sobre lo puesto, que es lo único que dice si '
+      + 'esto gana dinero: un 60 % de acierto puede perder y un 30 % puede ganar, según '
+      + 'a cuánto te lo paguen.'
+      + (c.sinDato
+          ? ' <b>' + c.sinDato + ' jugada' + (c.sinDato === 1 ? '' : 's') + ' sin dato</b> '
+            + 'queda' + (c.sinDato === 1 ? '' : 'n') + ' fuera de todas estas cuentas: '
+            + 'de esos partidos no se llegó a guardar cómo acabaron, y contarlos como '
+            + 'fallos sería inventar un resultado.'
+          : '')
+      + '</p>';
+
+    // Por cuantos numeros se jugo: ahi se ve si le va mejor apretar o cubrir.
+    var por = {};
+    JUGADAS.filter(function (x) { return !x.sinDato; }).forEach(function (x) {
+      var k = (x.nums || []).length;
+      if (!por[k]) por[k] = [];
+      por[k].push(x);
+    });
+    var claves = Object.keys(por).sort(function (a, b) { return a - b; });
+    if (claves.length) {
+      h += '<h2>Por cuántos números</h2><table><tr><th>Números</th><th class="r">Jugadas</th>'
+        + '<th class="r">Acierto</th><th class="r">Puesto</th><th class="r">Ganado</th>'
+        + '<th class="r">Rendimiento</th></tr>';
+      claves.forEach(function (k) {
+        var q = cuentasJugadas(por[k]);
+        h += '<tr><td class="d"><b>' + k + '</b></td>'
+          + '<td class="r">' + q.n + '</td>'
+          + '<td class="r">' + (q.acierto == null ? '—' : Math.round(q.acierto * 100) + ' %') + '</td>'
+          + '<td class="r">' + eur(q.puso) + '</td>'
+          + '<td class="r"><b>' + (q.gano >= 0 ? '+' : '') + Math.round(q.gano) + ' €</b></td>'
+          + '<td class="r">' + (q.rend == null ? '—' : (q.rend >= 0 ? '+' : '') + Math.round(q.rend * 100) + ' %') + '</td></tr>';
+      });
+      h += '</table>';
+    }
+
+    h += '<h2>Una por una</h2><table><tr><th>Partido</th><th>Jugué</th>'
+      + '<th class="r">Cuota</th><th class="r">Salió</th><th class="r">Puse</th>'
+      + '<th class="r">Gané</th></tr>';
+    JUGADAS.slice(0, 60).forEach(function (x) {
+      var cl = x.sinDato ? 'nodato' : (x.acerto ? 'gano' : 'perdio');
+      h += '<tr class="j-' + cl + '"><td>' + esc(x.partido || '')
+        + '<br><span class="li">' + esc(x.liga || '') + '</span></td>'
+        + '<td class="d">' + (x.nums || []).join(' · ') + '</td>'
+        + '<td class="r">' + (x.cuota == null ? '—' : Number(x.cuota).toFixed(2)) + '</td>'
+        + '<td class="r"><b>' + (x.sinDato
+            ? (x.ultimo
+                ? '<span title="no es el final">~' + x.ultimo.van + '</span>'
+                  + '<span class="li" style="display:block">últ. visto min ' + x.ultimo.min + '</span>'
+                : 'sin dato')
+            : x.final) + '</b></td>'
+        + '<td class="r">' + eur(x.puso || 0) + '</td>'
+        + '<td class="r"><b>' + (x.sinDato ? '—'
+            : (x.gano >= 0 ? '+' : '') + Math.round(x.gano) + ' €') + '</b></td></tr>';
+    });
+    h += '</table>';
+
+    // SACAR LOS DATOS. El navegador se puede borrar solo, y una
+    // estadistica que un dia desaparece no es una estadistica.
+    h += '<div class="apu" style="margin-top:12px">'
+      + '<button type="button" onclick="window.tlPos.exportar()">Copiar para la hoja de cálculo</button>'
+      + '<span>' + JUGADAS.length + ' jugada' + (JUGADAS.length === 1 ? '' : 's')
+      + ' guardada' + (JUGADAS.length === 1 ? '' : 's') + ' en este navegador</span></div>';
+    return h + '</div></div>';
+  }
+
   // Ficha de un partido que todavia no ha empezado. De uno que no juega
   // NO hay ventaja que medir: no hay minuto, no hay cornes y casi nunca
   // hay cuota en vivo. Solo hay previa, y se dice que es previa.
@@ -2467,6 +2573,81 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
   // y nadie puede leerlo, asi que esto es el valor justo del modelo menos
   // el margen tipico de la casa. Darlo por exacto acabaria en «pues a mi
   // me puso 112 y la casa me ofrecia 94».
+  // ---------- cerrar las jugadas que ya terminaron ----------
+  // El worker guarda como acabo cada partido: «paso» son los cornes
+  // finales. Cuando un partido apuntado deja de estar en juego y aparece
+  // cerrado, se liquida solo y pasa al historico.
+  //
+  // «PASO = 0» NO ES CERO CORNERS. Un partido de noventa minutos no acaba
+  // con cero: es que a ese nunca se le pidio estadistica y el dato no
+  // existe. Medido en el historico del worker: HIK - B 93, Roskilde -
+  // Nykobing y Albania U21 - Luxembourg U21, todos con paso = 0.
+  //
+  // Darlos por buenos marcaria como PERDIDAS jugadas que nadie sabe como
+  // acabaron, y ensuciaria para siempre el porcentaje de acierto. Se
+  // guardan aparte y no entran en ninguna cuenta.
+  function liquidar() {
+    var cerr = (histo().partidos || []);
+    if (!cerr.length) return;
+    var porId = {};
+    cerr.forEach(function (x) { porId[String(x.fixture_id)] = x; });
+    var vivosId = {};
+    vivos().forEach(function (m) { vivosId[String(m.id)] = 1; });
+
+    var cambio = false;
+    Object.keys(POS).forEach(function (fid) {
+      if (vivosId[fid]) return;                 // sigue jugandose
+      var c = porId[fid];
+      if (!c) return;                           // todavia no esta cerrado
+      var p = POS[fid];
+      var fin = Number(c.paso);
+      var puso = 0, cobro = 0, acerto = false, cuota = null;
+      (p.puestas || []).forEach(function (q) {
+        puso += Number(q.e) || 0;
+        if (Number(q.n) === fin) { acerto = true; cuota = Number(q.c); cobro = (Number(q.e) || 0) * cuota; }
+      });
+      JUGADAS.unshift({
+        fid: fid, partido: p.partido, liga: p.liga || c.liga || '',
+        ts: p.ts, cerrado: Date.now(),
+        nums: (p.puestas || []).map(function (q) { return Number(q.n); }),
+        eur: (p.puestas || [])[0] ? Number((p.puestas || [])[0].e) : null,
+        cuota: (p.puestas || [])[0] ? Number((p.puestas || [])[0].c) : null,
+        final: fin, modelo: c.dije == null ? null : Number(c.dije),
+        puso: puso, cobro: cobro, gano: cobro - puso, acerto: acerto,
+        // Sin esto, una jugada sin dato contaria como fallo y el
+        // porcentaje de acierto quedaria mal para siempre.
+        sinDato: !(fin > 0),
+        // Lo ultimo que vimos, por si el motor no guardo el final. NO
+        // decide nada: se ensena y se dice que no es el resultado final.
+        ultimo: (!(fin > 0) && ULTV[fid]) ? ULTV[fid] : null,
+      });
+      delete POS[fid];
+      cambio = true;
+    });
+    if (cambio) {
+      guardar('tl.pos', POS);
+      guardar('tl.jugadas', JUGADAS.slice(0, 400));
+      JUGADAS = JUGADAS.slice(0, 400);
+    }
+  }
+
+  // Las cuentas de lo jugado. Las que no tienen dato quedan fuera de
+  // todas: contarlas seria inventar un resultado.
+  function cuentasJugadas(lista) {
+    var buenas = lista.filter(function (x) { return !x.sinDato; });
+    var r = { total: lista.length, sinDato: lista.length - buenas.length,
+              n: buenas.length, aciertos: 0, puso: 0, cobro: 0 };
+    buenas.forEach(function (x) {
+      if (x.acerto) r.aciertos++;
+      r.puso += x.puso || 0;
+      r.cobro += x.cobro || 0;
+    });
+    r.gano = r.cobro - r.puso;
+    r.acierto = r.n ? r.aciertos / r.n : null;
+    r.rend = r.puso ? r.gano / r.puso : null;
+    return r;
+  }
+
   function alarmaCierre() {
     var ahora = Date.now();
     var listos = cierresAbiertos().filter(function (x) {
@@ -2518,6 +2699,12 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
         rH: m.rH || 0, rA: m.rA || 0, min: m.min || 0,
       };
       ANTES[m.id] = hoy;
+      // Si es uno de los suyos, se guarda por donde iba: puede que el
+      // motor no llegue a guardar como acabo.
+      if (POS && POS[m.id] && hoy.cH != null) {
+        ULTV[m.id] = { van: hoy.cH + hoy.cA, min: hoy.min, ts: ahora };
+        guardar('tl.ultvisto', ULTV);
+      }
       if (!ant) return;     // partido nuevo en la foto: no es una novedad
       var par = m.home + ' – ' + m.away;
       var vale = !!(m.best && m.best.ev >= EV_MIN) || !!mios[m.id];
@@ -2834,6 +3021,39 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
         + 'La alarma de cerrar ya lo vigila.');
     },
 
+    // Sacar el historico en texto separado por tabuladores, que es lo que
+    // pega directo en cualquier hoja de calculo. Los datos son suyos y el
+    // navegador se puede borrar solo.
+    exportar: function () {
+      var cab = ['partido', 'liga', 'numeros', 'euros_por_numero', 'cuota',
+                 'corners_finales', 'modelo_decia', 'puse', 'cobre', 'gane',
+                 'acerto', 'sin_dato', 'cuando'].join('\t');
+      var fil = JUGADAS.map(function (x) {
+        return [x.partido || '', x.liga || '', (x.nums || []).join(' '), x.eur == null ? '' : x.eur,
+                x.cuota == null ? '' : x.cuota, x.sinDato ? '' : x.final,
+                x.modelo == null ? '' : x.modelo, x.puso, x.cobro, x.gano,
+                x.sinDato ? '' : (x.acerto ? 'si' : 'no'), x.sinDato ? 'si' : 'no',
+                new Date(x.cerrado || x.ts || Date.now()).toISOString()].join('\t');
+      });
+      var txt = cab + '\n' + fil.join('\n');
+      var ok = function () {
+        alert('Copiado: ' + JUGADAS.length + ' jugadas.\n\nPégalo en una hoja de cálculo '
+          + 'y se reparte solo en columnas.');
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(ok, function () { pide(txt); });
+          return;
+        }
+      } catch (e) {}
+      pide(txt);
+      function pide(t) {
+        // Si el navegador no deja copiar solo, se enseña para copiarlo a
+        // mano. Peor es quedarse sin los datos.
+        window.prompt('Copia esto (Ctrl+C) y pégalo en la hoja de cálculo:', t);
+      }
+    },
+
     anadir: function () {
       var fid = (document.getElementById('pFid') || {}).value;
       var ns = String((document.getElementById('pNums') || {}).value || '')
@@ -2988,7 +3208,7 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
         h += '<button onclick="window.tlPos.quitar(\'' + esc(x.fid) + '\')" style="margin-top:8px">Dejar de vigilar</button>';
         h += '</div></div>';
       });
-      return h;
+      return h + jugadasHTML();
     } },
 
     historico: { t: 'Histórico', n: function () {
@@ -3587,6 +3807,10 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
         // Antes de repintar: la cinta compara esta foto con la anterior, y
         // si se hiciera despues ya se habria perdido la de antes.
         try { novedades(); } catch (e) {}
+        // Cerrar lo que haya terminado, antes de repintar: si se hiciera
+        // despues, la pantalla ensenaria un segundo mas una jugada que ya
+        // esta liquidada.
+        try { liquidar(); } catch (e) {}
         if (firma !== FIRMA) { FIRMA = firma; alarma(); render(); }
         // Va fuera del if: el valor de cerrar cambia con cada corner y con
         // cada minuto, y la firma solo mira si llego una foto nueva. Una
