@@ -875,6 +875,10 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
 .cierra{background:var(--rojo);color:#fff;box-shadow:var(--luzr);
         animation:late 1.3s ease-in-out infinite}
 @keyframes late{0%,100%{opacity:1}50%{opacity:.6}}
+/* ---- el botón de pasar al móvil ---- */
+/* Verde de WhatsApp pero legible sobre blanco: 4,6:1 medido. */
+.casa.wa{border-color:#0f7a6c;color:#0f7a6c}
+.casa.wa:hover{background:#0f7a6c;color:#fff}
 </style>
 </head>
 <body>
@@ -1527,10 +1531,54 @@ button.chip.on{background:var(--cesped);border-color:var(--cesped);color:#fff;
     var q = m.home || String(m.partido || '').split(/[–—-]/)[0].trim() || '';
     return 'https://www.flashscore.es/busqueda/?q=' + encodeURIComponent(q);
   }
+  // El resumen que se manda al movil. Sirve igual para la ficha en vivo
+  // (home/away/min/cH) que para la lista corta (partido/liga/minuto),
+  // porque enlaces() lo llaman las dos y con campos distintos.
+  function resumenWA(m) {
+    var par = m.home ? (m.home + ' – ' + m.away) : (m.partido || 'partido');
+    var liga = m.league || m.liga || '';
+    var mi = m.min != null ? m.min : (m.minuto != null ? m.minuto : null);
+    var van = m.cH != null ? (m.cH + (m.cA || 0))
+            : (m.llevan != null ? m.llevan : null);
+    var mod = m.expC != null ? Number(m.expC)
+            : (m.corners_modelo != null ? Number(m.corners_modelo) : null);
+    var l = [par + (liga ? ' (' + liga + ')' : '')];
+    if (mi != null) {
+      l.push('minuto ' + mi + (van != null ? ', van ' + van + ' córners' : ''));
+    }
+    // Igual que en la ficha: con menos de tres córners no hay ritmo que
+    // mandar. Mandar «a este paso 0» al móvil sería peor que no mandar
+    // nada, porque allí no está el resto de la pantalla para corregirlo.
+    if (mi > 0 && van != null && van >= 3) {
+      l.push('a este paso ' + Math.round(van / mi * 95));
+    }
+    if (mod != null) l.push('el modelo espera ' + mod.toFixed(1) + ' al final');
+    var k = null;
+    (m.markets || []).forEach(function (x) {
+      if (x.ev == null || x.p == null || !x.odd) return;
+      if (!k || x.ev > k.ev) k = x;
+    });
+    if (k) {
+      l.push((k.side === 'over' ? 'Más de ' : 'Menos de ') + k.line + ' córners: paga '
+        + Number(k.odd).toFixed(2) + ', el modelo dice ' + Math.round(k.p * 100) + ' %');
+      // LA LINEA QUE DECIDE. Uno partido por la probabilidad: lo que
+      // bet365 tiene que pagar para salir a cero a la larga.
+      l.push('cuota mínima para no perder: ' + (1 / k.p).toFixed(2));
+    }
+    l.push('https://elalpendre.github.io/tablero-corners/');
+    return l.join('\n');
+  }
+
   function enlaces(m) {
     return '<div class="casas">'
       + '<a class="casa" href="' + casaURL() + '" target="_blank" rel="noopener">Abrir bet365 en directo</a>'
       + '<a class="casa gris" href="' + buscaURL(m) + '" target="_blank" rel="noopener">Buscar el partido</a>'
+      // ABRE el WhatsApp con el texto escrito; NO lo manda. Elegir a quién
+      // y darle a enviar es suyo. Un botón que manda mensajes solo es un
+      // botón que un día manda el mensaje equivocado a quien no toca.
+      + '<a class="casa wa" href="https://wa.me/?text='
+        + encodeURIComponent(resumenWA(m))
+        + '" target="_blank" rel="noopener">Pasar al móvil</a>'
       + '</div>';
   }
 
