@@ -1065,6 +1065,20 @@ button.jok:hover{background:var(--magenta);color:#fff}
 .chips .tecla{font-family:var(--dato);font-size:.68rem;color:var(--tenue);
               border:1px solid var(--raya);border-radius:5px;padding:1px 6px;
               margin-left:4px}
+/* ---- la velocidad del partido ---- */
+.tmp{display:flex;flex-direction:column;gap:3px;margin-top:11px;
+     padding:10px 13px;border-radius:11px;border:1px solid var(--raya);
+     background:#fbfcfe}
+.tpal{font-family:var(--cartel);font-size:1.25rem;letter-spacing:.06em}
+.tdat{font-family:var(--dato);font-size:.78rem;color:var(--tenue)}
+.tdat b{color:var(--tinta)}
+.tnota{font-size:.72rem;color:var(--tenue);line-height:1.45;font-style:italic}
+.tmp-acelera{border-color:var(--cesped);background:var(--cespedf)}
+.tmp-acelera .tpal{color:var(--cesped)}
+.tmp-frena{border-color:var(--rojo);background:#fdeef0}
+.tmp-frena .tpal{color:var(--rojo)}
+.tmp-igual .tpal{color:var(--tenue);font-size:1.05rem}
+.tmp-nada{font-size:.76rem;color:var(--tenue);font-style:italic}
 </style>
 </head>
 <body>
@@ -3287,7 +3301,68 @@ button.jok:hover{background:var(--magenta);color:#fff}
       + '<div class="jeur">a ' + PORNUM + ' € pones <b>' + eur(pones) + '</b>'
       + ' y cobras <b>' + eur(cobras) + '</b> si entra</div>'
       + '</div>';
-    return h + veredictoHTML(m, el) + jbotones(m, el) + '</div>';
+    return h + tempoHTML(m) + veredictoHTML(m, el) + jbotones(m, el) + '</div>';
+  }
+
+  // ---------- la velocidad del partido ----------
+  // Diego: «ve muy claro cuando vender una posicion por la velocidad que
+  // lleva el partido, porque se activaron los ataques».
+  //
+  // Se compara el ritmo de los ultimos 15 minutos con el del partido
+  // entero. La serie ya existia: VELAS guarda minuto y cornes de cada
+  // foto, y nunca se habia usado para esto.
+  //
+  // OJO: EL MODELO NO USA ESTO. expC mira los cornes que llevan, el
+  // tiempo que queda y la media de la liga, pero no si el ritmo de los
+  // ultimos minutos se ha disparado. O sea que esta linea es informacion
+  // que el modelo NO tiene, no una confirmacion suya.
+  var TEMPO_VENT = 15;
+
+  function tempo(m) {
+    if (!m.hasStats || m.min == null || m.min < 25) return null;
+    var s = VELAS[m.id] || [];
+    if (s.length < 2) return null;
+    var van = (m.cH || 0) + (m.cA || 0);
+    var corte = m.min - TEMPO_VENT;
+    if (corte < 8) return null;
+    // El punto mas reciente que sea anterior al corte. Si no lo hay es
+    // que no estabamos mirando entonces, y no se inventa.
+    var ant = null;
+    for (var i = s.length - 1; i >= 0; i--) {
+      if (s[i].m != null && s[i].m <= corte) { ant = s[i]; break; }
+    }
+    if (!ant) return null;
+    var dm = m.min - ant.m;
+    if (dm < 8) return null;              // tramo demasiado corto para medir
+    var cayeron = van - ant.c;
+    if (cayeron < 0) return null;         // la API corrigio hacia abajo
+    var reciente = cayeron / dm, global = van / m.min;
+    if (!(global > 0)) return null;
+    var r = reciente / global;
+    return { reciente: reciente, global: global, razon: r, dm: dm, cayeron: cayeron,
+             k: r >= 1.4 ? 'acelera' : (r <= 0.6 ? 'frena' : 'igual') };
+  }
+
+  function tempoHTML(m) {
+    var t = tempo(m);
+    if (!t) {
+      if (m.hasStats && m.min >= 25) {
+        return '<div class="tmp tmp-nada">No puedo medir la velocidad: hay que llevar '
+          + 'mirando este partido un rato para comparar con hace 15 minutos.</div>';
+      }
+      return '';
+    }
+    var pal = t.k === 'acelera' ? 'SE HA ACELERADO'
+            : t.k === 'frena' ? 'SE HA FRENADO' : 'VA IGUAL';
+    return '<div class="tmp tmp-' + t.k + '">'
+      + '<span class="tpal">' + pal + '</span>'
+      + '<span class="tdat">últimos ' + t.dm + ' min: <b>' + t.reciente.toFixed(2)
+      + '</b>/min (' + t.cayeron + ' córner' + (t.cayeron === 1 ? '' : 's') + ')'
+      + ' · el partido entero: <b>' + t.global.toFixed(2) + '</b>/min'
+      + ' · <b>×' + t.razon.toFixed(1) + '</b></span>'
+      + '<span class="tnota">El modelo no cuenta con esto: mira los córners que llevan y '
+      + 'el tiempo que queda, no si los ataques se han activado ahora.</span>'
+      + '</div>';
   }
 
   // ---------- ENTRA o SAL, en una palabra ----------
@@ -3307,17 +3382,33 @@ button.jok:hover{background:var(--magenta);color:#fff}
     if (p) {
       var v = null;
       try { v = valorCierre(m.id); } catch (e) {}
+      // La velocidad cambia lo que va a pasar con sus numeros, y el
+      // modelo no la mira. Se anade al veredicto cuando dice algo.
+      var tp = tempo(m), extra = '';
+      if (tp && tp.k !== 'igual') {
+        var van = (m.cH || 0) + (m.cA || 0);
+        var arriba = (p.puestas || []).filter(function (q) { return Number(q.n) > van; }).length;
+        if (tp.k === 'frena' && arriba) {
+          extra = ' <b>Y el partido se ha frenado</b> (×' + tp.razon.toFixed(1)
+            + '): tienes ' + arriba + ' número' + (arriba === 1 ? '' : 's')
+            + ' por encima de los ' + van + ' que van, y a este ritmo no llegan.';
+        } else if (tp.k === 'acelera' && arriba) {
+          extra = ' <b>Pero el partido se ha acelerado</b> (×' + tp.razon.toFixed(1)
+            + '): tus ' + arriba + ' número' + (arriba === 1 ? '' : 's')
+            + ' de arriba se están acercando, y lo que te ofrezcan por cerrar va a subir.';
+        }
+      }
       if (v && v.margen != null && v.margen >= CIERRE_MIN) {
         return { k: 'sal', t: 'SAL',
           d: 'cerrar vale <b>' + eur(v.vale) + '</b> sobre los ' + eur(v.puesto)
              + ' que pusiste · <b>' + (v.margen >= 0 ? '+' : '')
              + Math.round(v.margen * 100) + ' %</b>. Mira el cash out de bet365: '
-             + 'el numero que manda es el suyo, este es el nuestro.' };
+             + 'el numero que manda es el suyo, este es el nuestro.' + extra };
       }
       if (v && v.margen != null) {
         return { k: 'aguanta', t: 'AGUANTA',
           d: 'cerrar ahora te daria <b>' + eur(v.vale) + '</b> sobre ' + eur(v.puesto)
-             + ' (' + Math.round(v.margen * 100) + ' %). Todavia no compensa.' };
+             + ' (' + Math.round(v.margen * 100) + ' %). Todavia no compensa.' + extra };
       }
       return { k: 'aguanta', t: 'AGUANTA',
         d: 'sin estadistica en directo no se puede valorar el cierre todavia.' };
